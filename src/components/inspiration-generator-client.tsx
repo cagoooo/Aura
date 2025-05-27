@@ -467,7 +467,7 @@ export default function InspirationGeneratorClient() {
                   以下是本次潤飾所做的變更：
                 </DialogDescription>
               </DialogHeader>
-              <ScrollArea className="flex-grow pr-6 -mr-6"> 
+              <ScrollArea className="flex-grow"> 
                 <div className="space-y-4 py-4">
                   {refinementChanges.length > 0 ? (
                     refinementChanges.map((change, index) => (
@@ -506,9 +506,9 @@ export default function InspirationGeneratorClient() {
             {consistencyResult.isConsistent 
               ? "目前的5W1H元素組合看起來很棒，前後呼應！" 
               : (
-                <ul className="list-none space-y-2.5 leading-relaxed mt-2"> {/* Changed from list-disc to list-none, added mt-2 */}
+                <ul className="list-none space-y-2.5 leading-relaxed mt-2">
                   {consistencyResult.suggestions.map((suggestionItem, index) => (
-                    <li key={index} className="whitespace-pre-wrap p-3 border rounded-md bg-muted/30 dark:bg-muted/20"> {/* Added styling to li */}
+                    <li key={index} className="whitespace-pre-wrap p-3 border rounded-md bg-muted/30 dark:bg-muted/20"> 
                       {suggestionItem.split('\n').map((line, lineIndex, arr) => (
                         <React.Fragment key={lineIndex}>
                           <StyledSuggestionLine text={line} />
