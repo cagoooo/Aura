@@ -61,7 +61,14 @@ const storySynthesisFlow = ai.defineFlow(
   },
   async input => {
     const {output} = await storySynthesisPrompt(input);
-    return output!;
+    if (!output) {
+      // Handle the case where the AI response could not be parsed or was empty
+      console.error("Story synthesis AI response was undefined or malformed for input:", input);
+      return {
+        story: 'AI無法合成故事，請稍後再試或調整您的5W1H元素。',
+      };
+    }
+    return output;
   }
 );
 

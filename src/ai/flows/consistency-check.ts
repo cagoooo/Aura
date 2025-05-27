@@ -65,7 +65,15 @@ const consistencyCheckFlow = ai.defineFlow(
   },
   async input => {
     const {output} = await consistencyCheckPrompt(input);
-    return output!;
+    if (!output) {
+      // Handle the case where the AI response could not be parsed or was empty
+      console.error("Consistency check AI response was undefined or malformed for input:", input);
+      return {
+        isConsistent: false,
+        suggestions: ['AI分析內容時發生錯誤，無法提供一致性建議，請稍後再試或調整輸入內容。'],
+      };
+    }
+    return output;
   }
 );
 
