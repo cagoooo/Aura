@@ -33,29 +33,39 @@ const randomElementGenerationPrompt = ai.definePrompt({
   name: 'randomElementGenerationPrompt',
   input: {schema: RandomElementGenerationInputSchema},
   output: {schema: RandomElementGenerationOutputSchema},
-  prompt: `You are a highly creative AI assistant specializing in generating unique and inspiring story components using natural and fluent Traditional Chinese that is common in Taiwan. Avoid Mainland Chinese specific terminology.
-Your task is to provide a **completely new, fresh, vivid, and imaginative** phrase or short sentence for the story element: {{{elementLabel}}} (type: {{{elementType}}}).
-**This generation must be treated as a "blank slate". It absolutely must NOT be an improvement, variation, or modification of any previous text, examples provided for this element, or common tropes you might typically consider. Your goal is to achieve true randomness and surprise with each generation.**
+  prompt: `You are a highly creative AI assistant specializing in generating **truly unique, unexpected, and wildly diverse** story components using natural and fluent Traditional Chinese that is common in Taiwan. Avoid Mainland Chinese specific terminology.
+Your task is to provide a **COMPLETELY NEW, FRESH, VIVID, and IMAGINATIVE** phrase or short sentence for the story element: {{{elementLabel}}} (type: {{{elementType}}}).
+**This generation must be treated as a "blank slate" and achieve genuine surprise with each output.**
 
-Please ensure your suggestion is:
-- In Traditional Chinese, using natural and fluent language commonly understood and used in Taiwan. Avoid Mainland Chinese specific terminology.
-- Concise and directly usable as a story component.
-- **Fundamentally different, distinct, and entirely unrelated to** the following examples (these are only provided as context of what NOT to generate or be similar to):
+It absolutely must NOT be:
+- An improvement, variation, or modification of any previous text or common tropes.
+- Similar to the provided existing examples (these are only for context of what NOT to generate or be similar to):
   {{#each existingOptions}}
   - {{{this}}}
   {{/each}}
-- **Strive for a wide variety of themes and concepts. Avoid overly common tropes or generating multiple elements that are thematically very similar (e.g., avoid repeatedly focusing on specific deities, folklore, or narrow cultural references like "阿嬤" or "媽祖" unless approached with extreme originality and as part of a diverse set of ideas). Your goal is to explore diverse possibilities such as science fiction, everyday life, abstract concepts, historical scenarios, personal dilemmas, humorous situations, philosophical questions, surreal events, etc.**
+- **Overly reliant on common fantastical or sci-fi themes** such as "宇宙 (universe/space)," "時間旅行 (time travel)," "人工智慧 (AI)," "外星人 (aliens)," "古老預言 (ancient prophecies)," or "神祇 (deities)" UNLESS you can present them with **extreme, mind-bending originality** and as a **rare part of a much broader, truly diverse set of generated ideas.** Your default should be to AVOID these if possible, to maximize true randomness.
 
-Think completely outside the box and offer something **truly original and entirely independent of ANY prior content, examples for this specific element, or patterns you might have fallen into.** Your goal is a "fresh start" for this idea, exploring diverse and unexpected directions. Ensure each generation is **genuinely random** and not merely a permutation of a recurring theme. Each output should feel like a brand new, surprising idea.
+Instead, you MUST strive for **MAXIMUM THEMATIC DIVERSITY and UNPREDICTABILITY**. Explore a vast range of possibilities, including but not limited to:
+- Mundane everyday life with a peculiar, subtle twist.
+- Deeply personal dilemmas or psychological explorations.
+- Absurdist humor or bizarre, illogical situations.
+- Unique perspectives on historical fiction or alternate histories.
+- Philosophical questions grounded in relatable, everyday scenarios.
+- Surreal, dreamlike, or metaphorical events that aren't necessarily sci-fi/fantasy.
+- Small-scale, intimate mysteries or quiet discoveries.
+- Concepts related to art, music, food, specific professions, or obscure hobbies.
+- Social commentary or observations on human nature presented creatively.
+
+Think completely outside the box. Your goal is a "fresh start" for this idea, producing something **genuinely random, novel, and entirely independent of ANY prior content, examples, or patterns you might have fallen into.** Each output should feel like a brand new, surprising idea pulled from a hat containing vastly different concepts.
 
 Output your response as a JSON object with a single field "generatedText".
-Example for '誰 (Who)', if existing options were '偵探', '學生':
+Example for '誰 (Who)', aiming for diversity:
 {
-  "generatedText": "一位能夠倒轉局部時間的摺紙藝術家"
+  "generatedText": "一位熱愛收集城市噪音的失眠圖書館員"
 }
 Or for '何事 (What)':
 {
-  "generatedText": "城市中所有貓咪突然學會了人類的語言"
+  "generatedText": "發現了一本只在雨天才能閱讀的日記"
 }
 `,
 });
@@ -77,3 +87,4 @@ const randomElementGenerationFlow = ai.defineFlow(
   }
 );
 
+    
