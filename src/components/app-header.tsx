@@ -3,8 +3,8 @@ import Link from 'next/link';
 
 export default function AppHeader() {
   return (
-    <header className="bg-card border-b border-border sticky top-0 z-50">
-      <div className="container mx-auto px-4 py-3 flex items-center">
+    <header className="bg-card border border-border sticky top-0 z-50">
+      <div className="container mx-auto px-4 py-3 flex items-center justify-center">
         <Link
           href="/"
           className="group flex items-center gap-2 text-primary transition-colors duration-300 ease-in-out"
