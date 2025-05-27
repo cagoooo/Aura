@@ -23,7 +23,7 @@ const StorySynthesisInputSchema = z.object({
 export type StorySynthesisInput = z.infer<typeof StorySynthesisInputSchema>;
 
 const StorySynthesisOutputSchema = z.object({
-  title: z.string().describe('A creative and concise title for the synthesized story, in Standard Traditional Chinese (標準繁體中文), using language natural for Taiwanese audiences.'),
+  title: z.string().describe('A creative and concise title for the synthesized story, in Standard Traditional Chinese (標準繁體中文), using language natural for Taiwanese audiences. The title should ideally incorporate the main character (Who element) if it enhances the title and theme.'),
   story: z.string().describe('The synthesized story or paragraph based on the 5W1H elements. This content should be in Standard Traditional Chinese (標準繁體中文), natural and fluent for a general Taiwanese audience, avoiding Mainland Chinese specific terminology.'),
 });
 
@@ -58,7 +58,7 @@ Where: {{{where}}}
 Why: {{{why}}}
 How: {{{how}}}
 
-1.  First, generate a concise, engaging, and relevant title for the story that captures its essence. The title must be in Standard Traditional Chinese, using language natural for Taiwanese audiences.
+1.  First, generate a concise, engaging, and relevant title for the story that captures its essence. The title must be in Standard Traditional Chinese, using language natural for Taiwanese audiences. **Try to naturally incorporate the main character (from the 'Who' element: {{{who}}}) into the title if it fits well with the story's theme and enhances the title. If including the 'Who' element makes the title awkward or too long, prioritize a creative and fitting title even without it.**
 2.  Then, combine these elements into a coherent and engaging short story or a descriptive paragraph. The story should be a creative interpretation and expansion of the provided elements, written in a style that is fluent and natural for Taiwanese readers, while adhering to the safety and appropriateness guidelines above.
 
 Output your response as a JSON object matching the schema, including 'title' and 'story' fields.
@@ -125,3 +125,4 @@ const storySynthesisFlow = ai.defineFlow(
     }
   }
 );
+
