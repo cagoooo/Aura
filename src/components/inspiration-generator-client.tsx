@@ -205,7 +205,6 @@ export default function InspirationGeneratorClient() {
       } finally {
          processedCount++;
          setRandomAllProgress(Math.min((processedCount / totalToProcessCount) * 100, 100));
-         // Immediate state update for card re-render and confetti
          await new Promise(resolve => setTimeout(resolve, 0)); 
          setIsLoading(prev => ({ ...prev, elements: { ...prev.elements, [key]: false } }));
       }
@@ -515,18 +514,25 @@ export default function InspirationGeneratorClient() {
               </DialogDescription>
             </DialogHeader>
             
-            <div className="space-y-4 py-4">
+            <div className="space-y-0 py-4"> {/* Changed space-y-4 to space-y-0, mb-4 on items will handle spacing */}
                 {refinementChanges.length > 0 ? (
                   refinementChanges.map((change, index) => (
-                    <div key={index} className="p-3 border rounded-md bg-muted/30 dark:bg-muted/20">
-                      <h4 className="font-semibold text-primary mb-2">{change.label}</h4>
-                      <div className="mb-2">
-                        <p className="text-xs text-muted-foreground mb-0.5">原文：</p>
-                        <p className="text-sm p-2 bg-card rounded border border-dashed border-border whitespace-pre-wrap">{change.original.trim() || "（無內容）"}</p>
+                    <div 
+                      key={index} 
+                      className="p-4 border border-blue-200/70 dark:border-blue-800/70 bg-blue-50/50 dark:bg-blue-900/30 rounded-lg shadow-lg mb-4"
+                    >
+                      <h4 className="text-lg font-bold text-primary mb-3">{change.label}</h4>
+                      <div className="mb-3">
+                        <p className="text-sm font-semibold text-amber-600 dark:text-amber-400 mb-1">原文：</p>
+                        <p className="text-sm p-3 bg-white dark:bg-zinc-700 rounded-md border border-dashed border-slate-400 dark:border-slate-600 whitespace-pre-wrap text-zinc-700 dark:text-zinc-200">
+                          {change.original.trim() || "（無內容）"}
+                        </p>
                       </div>
                       <div>
-                        <p className="text-xs text-green-600 dark:text-green-500 mb-0.5">潤飾後：</p>
-                        <p className="text-sm p-2 bg-card rounded border border-green-500 dark:border-green-400 whitespace-pre-wrap">{change.refined.trim() || "（無內容）"}</p>
+                        <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 mb-1">潤飾後：</p>
+                        <p className="text-sm p-3 bg-white dark:bg-zinc-700 rounded-md border border-emerald-500 dark:border-emerald-600 whitespace-pre-wrap text-zinc-800 dark:text-zinc-100">
+                          {change.refined.trim() || "（無內容）"}
+                        </p>
                       </div>
                     </div>
                   ))
@@ -633,6 +639,8 @@ export default function InspirationGeneratorClient() {
 
 
 
+
+    
 
     
 
