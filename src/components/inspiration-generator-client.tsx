@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import type { W1HKey } from '@/lib/constants';
 import { W1H_ELEMENTS, ALL_W1H_KEYS } from '@/lib/constants';
 import W1HElementCard from '@/components/w1h-element-card';
@@ -23,6 +23,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import confetti from 'canvas-confetti';
 
 type W1HState = {
@@ -167,9 +168,7 @@ export default function InspirationGeneratorClient() {
     setSynthesizedContent(null);
     setConsistencyResult(null);
     
-    const originalW1hData = JSON.parse(JSON.stringify(w1hData)) as W1HState;
-    const newW1hData = { ...originalW1hData };
-    const elementsToProcessKeys = ALL_W1H_KEYS.filter(key => !newW1hData[key].isLocked);
+    const elementsToProcessKeys = ALL_W1H_KEYS.filter(key => !w1hData[key].isLocked);
     const totalToProcessCount = elementsToProcessKeys.length;
     
     if (totalToProcessCount === 0) {
@@ -190,21 +189,33 @@ export default function InspirationGeneratorClient() {
         const input: RandomElementGenerationInput = {
           elementType: key,
           elementLabel: W1H_ELEMENTS[key].label,
-          existingOptions: W1H_ELEMENTS[key].options,
+          existingOptions: W1H_ELEMENTS[key].options, // Pass existing options for variety
         };
         const result = await randomElementGenerate(input);
-        newW1hData[key] = { ...newW1hData[key], text: result.generatedText };
+        // Update state for this specific key immediately to trigger re-render and confetti
+        setW1hData((prevData) => ({
+          ...prevData,
+          [key]: { ...prevData[key], text: result.generatedText },
+        }));
         generatedCount++;
       } catch (error) {
         console.error(`Random generation error for ${key} during random all:`, error);
-        newW1hData[key] = { ...newW1hData[key], text: getRandomItem(W1H_ELEMENTS[key].options) };
+        // Update state with fallback immediately
+        setW1hData((prevData) => ({
+          ...prevData,
+          [key]: { ...prevData[key], text: getRandomItem(W1H_ELEMENTS[key].options) },
+        }));
       } finally {
          processedCount++;
          setRandomAllProgress(Math.min((processedCount / totalToProcessCount) * 100, 100));
+         // Set loading for the specific element to false AFTER its state update has likely processed
+         // Use a small timeout to ensure confetti can trigger if the state update causes a quick re-render
+         // This might not be strictly necessary if React batches updates efficiently, but can help ensure isLoading toggles correctly for confetti
+         await new Promise(resolve => setTimeout(resolve, 0)); 
          setIsLoading(prev => ({ ...prev, elements: { ...prev.elements, [key]: false } }));
       }
     }
-    setW1hData(newW1hData);
+    
     setIsLoading(prev => ({ ...prev, randomAll: false }));
     if (generatedCount > 0) {
         toast({ title: "全部隨機完畢", description: `已為 ${generatedCount} 個未鎖定項目產生新內容。` });
@@ -220,9 +231,8 @@ export default function InspirationGeneratorClient() {
     setSynthesizedContent(null);
     setRefinementChanges([]);
 
-
-    const originalW1hData = JSON.parse(JSON.stringify(w1hData)) as W1HState;
-    const newW1hData = { ...originalW1hData };
+    const originalW1hData = JSON.parse(JSON.stringify(w1hData)) as W1HState; // Deep copy
+    const newW1hData = JSON.parse(JSON.stringify(w1hData)) as W1HState; // Deep copy for modifications
     
     const elementsToRefine = ALL_W1H_KEYS;
     const totalToRefine = elementsToRefine.length;
@@ -264,16 +274,23 @@ export default function InspirationGeneratorClient() {
     const changesMade: RefinementChange[] = [];
     let actualModificationsCount = 0;
     for (const key of ALL_W1H_KEYS) {
-      const originalText = originalW1hData[key as W1HKey].text;
-      const refinedText = newW1hData[key as W1HKey].text;
+      const originalTextForDialog = originalW1hData[key as W1HKey].text;
+      const refinedTextForDialog = newW1hData[key as W1HKey].text;
       // Compare trimmed versions to avoid flagging whitespace-only changes
-      if (originalText.trim() !== refinedText.trim()) { 
+      if (originalTextForDialog.trim() !== refinedTextForDialog.trim() && refinedTextForDialog.trim() !== '') { 
         changesMade.push({
           label: W1H_ELEMENTS[key as W1HKey].label,
-          original: originalText,
-          refined: refinedText,
+          original: originalTextForDialog,
+          refined: refinedTextForDialog,
         });
         actualModificationsCount++;
+      } else if (originalTextForDialog.trim() && refinedTextForDialog.trim() === '') { // Original had text, refined is empty
+         changesMade.push({
+          label: W1H_ELEMENTS[key as W1HKey].label,
+          original: originalTextForDialog,
+          refined: refinedTextForDialog, // Will show as empty
+        });
+        actualModificationsCount++; // Still count as a change if text was removed
       }
     }
     setRefinementChanges(changesMade);
@@ -340,15 +357,15 @@ export default function InspirationGeneratorClient() {
 
       if (result && result.story && result.title && !errorTitles.includes(result.title)) {
          confetti({
-          particleCount: 300,
-          spread: 120,
+          particleCount: 300, // More particles
+          spread: 120,        // Wider spread
           origin: { x: 0.5, y: 0.5 }, // Center of the screen
-          ticks: 400,
+          ticks: 400,         // Longer duration
           gravity: 0.7,
           startVelocity: 45,
-          scalar: 1.2, // Make particles larger
-          zIndex: 10001, // Ensure it's on top
-          colors: ['#FFC107', '#E91E63', '#2196F3', '#4CAF50', '#FF5722', '#9C27B0', '#00BCD4']
+          scalar: 1.2,        // Larger particles
+          zIndex: 10001,       // Ensure it's on top
+          colors: ['#FFC107', '#E91E63', '#2196F3', '#4CAF50', '#FF5722', '#9C27B0', '#00BCD4'] // Vibrant colors
         });
         toast({ title: "內容合成成功", description: "已根據您的5W1H元素生成了一段故事靈感！" });
       } else {
@@ -416,7 +433,10 @@ export default function InspirationGeneratorClient() {
           }));
         })
         .finally(() => {
-          setIsLoading(prev => ({ ...prev, elements: { ...prev.elements, [key]: false } }));
+           // Use a small timeout to ensure confetti can trigger if the state update causes a quick re-render
+          setTimeout(() => {
+            setIsLoading(prev => ({ ...prev, elements: { ...prev.elements, [key]: false } }));
+          }, 0);
         });
       }
       return Promise.resolve();
@@ -477,7 +497,7 @@ export default function InspirationGeneratorClient() {
 
       {isLoading.consistency && (
         <div className="my-6 max-w-sm mx-auto px-4">
-          <Progress value={50} className="w-full h-2.5 rounded-full bg-primary/30 [&>div]:bg-primary" />
+          <Progress value={50} className="w-full h-2.5 rounded-full bg-primary/30 [&>div]:bg-primary" /> {/* Indeterminate */}
           <p className="text-sm text-muted-foreground text-center mt-2">
             正在檢查一致性...
           </p>
@@ -486,7 +506,7 @@ export default function InspirationGeneratorClient() {
 
       {isLoading.synthesis && (
         <div className="my-6 max-w-sm mx-auto px-4">
-          <Progress value={50} className="w-full h-2.5 rounded-full bg-primary/30 [&>div]:bg-primary" />
+          <Progress value={50} className="w-full h-2.5 rounded-full bg-primary/30 [&>div]:bg-primary" /> {/* Indeterminate */}
           <p className="text-sm text-muted-foreground text-center mt-2">
             正在合成故事靈感...
           </p>
@@ -538,7 +558,7 @@ export default function InspirationGeneratorClient() {
                   {consistencyResult.isConsistent ? "內容一致性良好！" : "一致性建議"}
                 </AlertTitle>
               </div>
-              {!consistencyResult.isConsistent && consistencyResult.suggestions.length > 0 && (
+              {!consistencyResult.isConsistent && consistencyResult.suggestions && consistencyResult.suggestions.length > 0 && (
                 <Button
                   variant="ghost"
                   size="icon"
@@ -617,4 +637,5 @@ export default function InspirationGeneratorClient() {
     
 
     
+
 
