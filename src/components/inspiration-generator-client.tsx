@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react'; // Added React import
 import type { W1HKey } from '@/lib/constants';
 import { W1H_ELEMENTS, ALL_W1H_KEYS } from '@/lib/constants';
 import W1HElementCard from '@/components/w1h-element-card';
@@ -41,13 +41,60 @@ const W1H_CARD_COLORS: Record<W1HKey, string> = {
 
 const getRandomItem = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 
+// Helper component to style suggestion lines
+const StyledSuggestionLine = ({ text }: { text: string }) => {
+  const trimmedLine = text.trimStart();
+  const leadingSpace = text.substring(0, text.indexOf(trimmedLine));
+
+  const elementMatch = trimmedLine.match(/^(關於「.+?」元素)：(.*)/);
+  if (elementMatch) {
+    return (
+      <>
+        {leadingSpace}
+        <span className="font-semibold text-primary">{elementMatch[1]}：</span>
+        {elementMatch[2].trimStart()}
+      </>
+    );
+  }
+
+  const problemMatch = trimmedLine.match(/^(問題點)：(.*)/);
+  if (problemMatch) {
+    return (
+      <>
+        {leadingSpace}
+        <span className="font-semibold text-destructive">{problemMatch[1]}：</span>
+        {problemMatch[2].trimStart()}
+      </>
+    );
+  }
+
+  const adviceMatch = trimmedLine.match(/^(建議調整)：(.*)/);
+  if (adviceMatch) {
+    return (
+      <>
+        {leadingSpace}
+        <span className="font-semibold text-green-600 dark:text-green-500">{adviceMatch[1]}：</span>
+        {adviceMatch[2].trimStart()}
+      </>
+    );
+  }
+  
+  // Preserve indentation for list items like "1. ..." or "- ..."
+  if (trimmedLine.match(/^(\d+\.|\-)\s/)) {
+    return <>{text}</>; // Return as is, relying on whitespace-pre-wrap and AI formatting
+  }
+
+  return <>{text}</>; // Default: return the original line
+};
+
+
 export default function InspirationGeneratorClient() {
   const { toast } = useToast();
   const [w1hData, setW1hData] = useState<W1HState>(() => {
     const initialState = {} as W1HState;
     for (const key of ALL_W1H_KEYS) {
       initialState[key] = {
-        text: '', // Initialize empty, will be filled by AI in useEffect
+        text: '', 
         isLocked: false,
       };
     }
@@ -109,12 +156,12 @@ export default function InspirationGeneratorClient() {
     
     if (totalToProcessCount === 0) {
       setIsLoading(prev => ({ ...prev, randomAll: false }));
-      setRandomAllProgress(0); // Reset progress
+      setRandomAllProgress(0); 
       toast({ title: "全部隨機", description: "所有項目均已鎖定，未產生新內容。" });
       return;
     }
     
-    setRandomAllProgress(1); // Start progress if there's work
+    setRandomAllProgress(1); 
 
     let processedCount = 0;
     let generatedCount = 0;
@@ -162,7 +209,7 @@ export default function InspirationGeneratorClient() {
         setIsLoading(prev => ({ ...prev, grammar: false }));
         return;
     }
-    setGrammarProgress(1); // Start progress
+    setGrammarProgress(1); 
 
     const newW1hData = { ...w1hData };
 
@@ -370,8 +417,15 @@ export default function InspirationGeneratorClient() {
               ? "目前的5W1H元素組合看起來很棒，前後呼應！" 
               : (
                 <ul className="list-disc list-inside ml-2 space-y-2.5 leading-relaxed">
-                  {consistencyResult.suggestions.map((suggestion, index) => (
-                    <li key={index} className="whitespace-pre-wrap">{suggestion}</li>
+                  {consistencyResult.suggestions.map((suggestionItem, index) => (
+                    <li key={index} className="whitespace-pre-wrap">
+                      {suggestionItem.split('\n').map((line, lineIndex, arr) => (
+                        <React.Fragment key={lineIndex}>
+                          <StyledSuggestionLine text={line} />
+                          {lineIndex < arr.length - 1 && '\n'}
+                        </React.Fragment>
+                      ))}
+                    </li>
                   ))}
                 </ul>
               )
@@ -423,4 +477,3 @@ export default function InspirationGeneratorClient() {
     </div>
   );
 }
-
