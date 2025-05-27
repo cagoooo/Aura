@@ -3,3 +3,4 @@ config();
 
 import '@/ai/flows/consistency-check.ts';
 import '@/ai/flows/grammar-improvement.ts';
+import '@/ai/flows/story-synthesis.ts';
