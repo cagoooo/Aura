@@ -347,14 +347,14 @@ export default function InspirationGeneratorClient() {
       {consistencyResult && (
         <Alert className={`mb-8 rounded-lg shadow-md ${consistencyResult.isConsistent ? 'border-green-500 bg-green-50 dark:bg-green-900/30 dark:border-green-700' : 'border-amber-500 bg-amber-50 dark:bg-amber-900/30 dark:border-amber-700'} max-w-3xl mx-auto`}>
           <CheckCircle2 className={`h-5 w-5 ${consistencyResult.isConsistent ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}`} />
-          <AlertTitle className={`font-semibold ${consistencyResult.isConsistent ? 'text-green-700 dark:text-green-300' : 'text-amber-700 dark:text-amber-300'}`}>
+          <AlertTitle className={`text-lg font-semibold ${consistencyResult.isConsistent ? 'text-green-700 dark:text-green-300' : 'text-amber-700 dark:text-amber-300'}`}>
             {consistencyResult.isConsistent ? "內容一致性良好！" : "一致性建議"}
           </AlertTitle>
           <AlertDescription className={`text-sm ${consistencyResult.isConsistent ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}`}>
             {consistencyResult.isConsistent 
               ? "目前的5W1H元素組合看起來很棒，前後呼應！" 
               : (
-                <ul className="list-disc list-inside ml-2 space-y-1.5">
+                <ul className="list-disc list-inside ml-2 space-y-1.5 leading-relaxed">
                   {consistencyResult.suggestions.map((suggestion, index) => (
                     <li key={index}>{suggestion}</li>
                   ))}
