@@ -23,7 +23,6 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import confetti from 'canvas-confetti';
 
 type W1HState = {
@@ -206,6 +205,7 @@ export default function InspirationGeneratorClient() {
       } finally {
          processedCount++;
          setRandomAllProgress(Math.min((processedCount / totalToProcessCount) * 100, 100));
+         // Immediate state update for card re-render and confetti
          await new Promise(resolve => setTimeout(resolve, 0)); 
          setIsLoading(prev => ({ ...prev, elements: { ...prev.elements, [key]: false } }));
       }
@@ -507,35 +507,36 @@ export default function InspirationGeneratorClient() {
 
      {isRefinementDialogOpen && (
         <Dialog open={isRefinementDialogOpen} onOpenChange={setIsRefinementDialogOpen}>
-          <DialogContent className="sm:max-w-[600px] max-h-[85vh] flex flex-col">
+          <DialogContent className="sm:max-w-[600px] max-h-[85vh] flex flex-col overflow-y-auto">
             <DialogHeader>
               <DialogTitle>語法潤飾結果</DialogTitle>
               <DialogDescription>
                 以下是本次潤飾所做的變更：
               </DialogDescription>
             </DialogHeader>
-            <ScrollArea className="flex-grow min-h-0 w-full">
-              <div className="space-y-4 py-4">
-                  {refinementChanges.length > 0 ? (
-                    refinementChanges.map((change, index) => (
-                      <div key={index} className="p-3 border rounded-md bg-muted/30 dark:bg-muted/20">
-                        <h4 className="font-semibold text-primary mb-2">{change.label}</h4>
-                        <div className="mb-2">
-                          <p className="text-xs text-muted-foreground mb-0.5">原文：</p>
-                          <p className="text-sm p-2 bg-background/70 dark:bg-background/50 rounded border border-dashed border-input whitespace-pre-wrap">{change.original.trim() || "（無內容）"}</p>
+            {/* Content area that will scroll if needed, thanks to overflow-y-auto on DialogContent */}
+            <div>
+                <div className="space-y-4 py-4">
+                    {refinementChanges.length > 0 ? (
+                      refinementChanges.map((change, index) => (
+                        <div key={index} className="p-3 border rounded-md bg-muted/30 dark:bg-muted/20">
+                          <h4 className="font-semibold text-primary mb-2">{change.label}</h4>
+                          <div className="mb-2">
+                            <p className="text-xs text-muted-foreground mb-0.5">原文：</p>
+                            <p className="text-sm p-2 bg-background/70 dark:bg-background/50 rounded border border-dashed border-input whitespace-pre-wrap">{change.original.trim() || "（無內容）"}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-green-600 dark:text-green-500 mb-0.5">潤飾後：</p>
+                            <p className="text-sm p-2 bg-background/70 dark:bg-background/50 rounded border border-green-500/50 whitespace-pre-wrap">{change.refined.trim() || "（無內容）"}</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-xs text-green-600 dark:text-green-500 mb-0.5">潤飾後：</p>
-                          <p className="text-sm p-2 bg-background/70 dark:bg-background/50 rounded border border-green-500/50 whitespace-pre-wrap">{change.refined.trim() || "（無內容）"}</p>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-center text-muted-foreground py-4">所有項目的語法均已相當通順，無需調整。</p>
-                  )}
-                </div>
-            </ScrollArea>
-            <DialogFooter className="mt-2 pt-4 border-t"> 
+                      ))
+                    ) : (
+                      <p className="text-center text-muted-foreground py-4">所有項目的語法均已相當通順，無需調整。</p>
+                    )}
+                  </div>
+            </div>
+            <DialogFooter className="mt-auto pt-4 border-t"> 
               <Button onClick={() => setIsRefinementDialogOpen(false)}>關閉</Button>
             </DialogFooter>
           </DialogContent>
@@ -634,5 +635,7 @@ export default function InspirationGeneratorClient() {
 
 
 
+
+    
 
     
