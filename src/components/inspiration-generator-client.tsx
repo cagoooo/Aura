@@ -14,6 +14,8 @@ import { storySynthesis, StorySynthesisInput, StorySynthesisOutput } from '@/ai/
 import { randomElementGenerate, RandomElementGenerationInput, RandomElementGenerationOutput } from '@/ai/flows/random-element-generation';
 import { Loader2, Sparkles, CheckCircle2, Shuffle, BookText, Copy } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Progress } from "@/components/ui/progress";
+
 
 type W1HState = {
   [key in W1HKey]: {
@@ -30,7 +32,7 @@ export default function InspirationGeneratorClient() {
     const initialState = {} as W1HState;
     for (const key of ALL_W1H_KEYS) {
       initialState[key] = {
-        text: getRandomItem(W1H_ELEMENTS[key].options), // Initial random from local
+        text: '', // Initialize empty, will be filled by AI in useEffect
         isLocked: false,
       };
     }
@@ -45,6 +47,7 @@ export default function InspirationGeneratorClient() {
     elements: {} as Record<W1HKey, boolean>,
   });
 
+  const [randomAllProgress, setRandomAllProgress] = useState(0);
   const [consistencyResult, setConsistencyResult] = useState<ConsistencyCheckOutput | null>(null);
   const [synthesizedStory, setSynthesizedStory] = useState<string | null>(null);
 
@@ -70,7 +73,6 @@ export default function InspirationGeneratorClient() {
       setW1hData((prev) => ({ ...prev, [key]: { ...prev[key], text: result.generatedText } }));
     } catch (error) {
       console.error(`AI random generation error for ${key}:`, error);
-      // Fallback to local random item on error
       const randomText = getRandomItem(W1H_ELEMENTS[key].options);
       setW1hData((prev) => ({ ...prev, [key]: { ...prev[key], text: randomText } }));
       toast({ variant: "destructive", title: "AI隨機產生失敗", description: `為「${W1H_ELEMENTS[key].label}」項目AI隨機產生內容時發生錯誤，已使用備用選項。` });
@@ -81,39 +83,49 @@ export default function InspirationGeneratorClient() {
 
   const handleRandomAll = async () => {
     setIsLoading(prev => ({ ...prev, randomAll: true }));
+    setRandomAllProgress(0);
     setSynthesizedStory(null);
     setConsistencyResult(null);
     
     const newW1hData = { ...w1hData };
+    const elementsToProcessKeys = ALL_W1H_KEYS.filter(key => !newW1hData[key].isLocked);
+    const totalToProcessCount = elementsToProcessKeys.length;
+    let processedCount = 0;
     let generatedCount = 0;
 
-    for (const key of ALL_W1H_KEYS) {
-      if (!newW1hData[key].isLocked) {
-        setIsLoading(prev => ({ ...prev, elements: { ...prev.elements, [key]: true } }));
-        try {
-          const input: RandomElementGenerationInput = {
-            elementType: key,
-            elementLabel: W1H_ELEMENTS[key].label,
-            existingOptions: W1H_ELEMENTS[key].options,
-          };
-          const result = await randomElementGenerate(input);
-          newW1hData[key] = { ...newW1hData[key], text: result.generatedText };
-          generatedCount++;
-        } catch (error) {
-          console.error(`AI random generation error for ${key} during random all:`, error);
-          // Fallback to local random item on error
-          newW1hData[key] = { ...newW1hData[key], text: getRandomItem(W1H_ELEMENTS[key].options) };
-        } finally {
-           setIsLoading(prev => ({ ...prev, elements: { ...prev.elements, [key]: false } }));
-        }
+    if (totalToProcessCount === 0) {
+      setIsLoading(prev => ({ ...prev, randomAll: false }));
+      setRandomAllProgress(0);
+      toast({ title: "全部隨機", description: "所有項目均已鎖定，未產生新內容。" });
+      return;
+    }
+
+    setRandomAllProgress(1); // Start progress bar if there's work
+
+    for (const key of elementsToProcessKeys) {
+      setIsLoading(prev => ({ ...prev, elements: { ...prev.elements, [key]: true } }));
+      try {
+        const input: RandomElementGenerationInput = {
+          elementType: key,
+          elementLabel: W1H_ELEMENTS[key].label,
+          existingOptions: W1H_ELEMENTS[key].options,
+        };
+        const result = await randomElementGenerate(input);
+        newW1hData[key] = { ...newW1hData[key], text: result.generatedText };
+        generatedCount++;
+      } catch (error) {
+        console.error(`AI random generation error for ${key} during random all:`, error);
+        newW1hData[key] = { ...newW1hData[key], text: getRandomItem(W1H_ELEMENTS[key].options) };
+      } finally {
+         processedCount++;
+         setRandomAllProgress(Math.min((processedCount / totalToProcessCount) * 100, 100));
+         setIsLoading(prev => ({ ...prev, elements: { ...prev.elements, [key]: false } }));
       }
     }
     setW1hData(newW1hData);
     setIsLoading(prev => ({ ...prev, randomAll: false }));
     if (generatedCount > 0) {
         toast({ title: "全部隨機完畢 (AI)", description: `已為 ${generatedCount} 個未鎖定項目AI產生新內容。` });
-    } else {
-        toast({ title: "全部隨機", description: "所有項目均已鎖定，未產生新內容。" });
     }
   };
 
@@ -215,15 +227,10 @@ export default function InspirationGeneratorClient() {
   };
   
   useEffect(() => {
-    let updated = false;
-    const currentData = { ...w1hData };
-    ALL_W1H_KEYS.forEach(key => {
-      // Initialize with AI-generated content if text is empty or undefined
-      if (!currentData[key].text) {
-        // Temporarily set loading for this element to prevent user interaction
-        // and to give a visual cue if the initial load is slow.
+    const initialLoadPromises = ALL_W1H_KEYS.map(key => {
+      if (!w1hData[key].text) { // Only fetch if text is currently empty
         setIsLoading(prev => ({ ...prev, elements: { ...prev.elements, [key]: true } }));
-        randomElementGenerate({
+        return randomElementGenerate({
           elementType: key,
           elementLabel: W1H_ELEMENTS[key].label,
           existingOptions: W1H_ELEMENTS[key].options,
@@ -236,7 +243,6 @@ export default function InspirationGeneratorClient() {
         })
         .catch(error => {
           console.error(`Initial AI random generation error for ${key}:`, error);
-          // Fallback to local random item on error
           setW1hData(prevData => ({
             ...prevData,
             [key]: { ...prevData[key], text: getRandomItem(W1H_ELEMENTS[key].options) },
@@ -245,10 +251,14 @@ export default function InspirationGeneratorClient() {
         .finally(() => {
           setIsLoading(prev => ({ ...prev, elements: { ...prev.elements, [key]: false } }));
         });
-        updated = true; // Mark as updated to potentially avoid a double render, though state updates will trigger renders.
       }
+      return Promise.resolve(); // Return a resolved promise for elements that don't need loading
     });
-    // No direct setW1hData here as it's handled within the async calls
+
+    Promise.all(initialLoadPromises).then(() => {
+      // All initial elements are loaded or attempted
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Empty dependency array to run once on mount
 
 
@@ -260,7 +270,7 @@ export default function InspirationGeneratorClient() {
         點擊「隨機產生 (AI)」來獲得靈感，或使用AI工具「潤飾語法」、「檢查一致性」及「合成內容」來完善您的創意點子！
       </p>
 
-      <div className="flex flex-col sm:flex-row gap-4 mb-8 justify-center flex-wrap">
+      <div className="flex flex-col sm:flex-row gap-4 mb-6 justify-center flex-wrap">
         <Button onClick={handleRandomAll} disabled={anyLoading} className="bg-accent hover:bg-accent/90 text-accent-foreground flex-1 sm:flex-none rounded-lg shadow-md">
           {isLoading.randomAll ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Shuffle className="mr-2 h-5 w-5" />}
           全部隨機 (AI)
@@ -278,6 +288,17 @@ export default function InspirationGeneratorClient() {
           合成內容 (AI)
         </Button>
       </div>
+
+      {/* Progress bar for Random All */}
+      {isLoading.randomAll && randomAllProgress > 0 && (
+        <div className="my-6 max-w-sm mx-auto px-4">
+          <Progress value={randomAllProgress} className="w-full h-2.5 rounded-full" />
+          <p className="text-sm text-muted-foreground text-center mt-2">
+            AI 正在努力產生靈感... {Math.round(randomAllProgress)}%
+          </p>
+        </div>
+      )}
+
 
       {consistencyResult && (
         <Alert className={`mb-8 rounded-lg shadow-md ${consistencyResult.isConsistent ? 'border-green-500 bg-green-50' : 'border-amber-500 bg-amber-50'} max-w-3xl mx-auto`}>
@@ -331,10 +352,11 @@ export default function InspirationGeneratorClient() {
             onValueChange={(text) => handleTextChange(key, text)}
             onRandom={() => handleRandomGenerate(key)}
             onToggleLock={() => handleToggleLock(key)}
-            useAiRandom={true} // Indicate that this card uses AI for random generation
+            useAiRandom={true}
           />
         ))}
       </div>
     </div>
   );
 }
+
