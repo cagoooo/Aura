@@ -44,7 +44,7 @@ Please ensure your suggestion is:
   {{#each existingOptions}}
   - {{{this}}}
   {{/each}}
-- **Strive for a wide variety of themes and concepts. Avoid overly common tropes or generating multiple elements that are thematically very similar (e.g., repeatedly focusing on specific deities, folklore, or narrow cultural references unless approached with extreme originality). Your goal is to explore diverse possibilities such as science fiction, everyday life, abstract concepts, historical scenarios, personal dilemmas, humorous situations, philosophical questions, surreal events, etc.**
+- **Strive for a wide variety of themes and concepts. Avoid overly common tropes or generating multiple elements that are thematically very similar (e.g., repeatedly focusing on specific deities, folklore, or narrow cultural references like "阿嬤" or "媽祖" unless approached with extreme originality). Your goal is to explore diverse possibilities such as science fiction, everyday life, abstract concepts, historical scenarios, personal dilemmas, humorous situations, philosophical questions, surreal events, etc.**
 
 Think completely outside the box and offer something **truly original and entirely independent of ANY prior content, examples for this specific element, or patterns you might have fallen into.** Your goal is a "fresh start" for this idea, exploring diverse and unexpected directions. Ensure each generation is **genuinely random** and not merely a permutation of a recurring theme. Each output should feel like a brand new, surprising idea.
 
