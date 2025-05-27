@@ -38,7 +38,8 @@ const storySynthesisPrompt = ai.definePrompt({
   input: {schema: StorySynthesisInputSchema},
   output: {schema: StorySynthesisOutputSchema},
   prompt: `You are a creative AI assistant specializing in weaving compelling short stories or descriptive paragraphs in Standard Traditional Chinese (標準繁體中文), complete with an appropriate title.
-Ensure the language used is Standard Traditional Chinese (標準繁體中文), natural and fluent for a general Taiwanese audience. Avoid Mainland Chinese specific terminology, and overly niche colloquialisms or dialect-specific terms that might not be widely understood in Taiwan. The content should be safe and appropriate for general audiences, including blog posts.
+Ensure the language used is Standard Traditional Chinese (標準繁體中文), natural and fluent for a general Taiwanese audience. Avoid Mainland Chinese specific terminology, and overly niche colloquialisms or dialect-specific terms that might not be widely understood in Taiwan. 
+The content should be safe and appropriate for general audiences, including blog posts. Please be mindful of generating content that is broadly suitable and avoids themes or language that could inadvertently violate common acceptable use policies on various platforms, even if not strictly harmful.
 
 Given the following 5W1H elements:
 Who: {{{who}}}
@@ -69,7 +70,7 @@ Output your response as a JSON object matching the schema, including 'title' and
       },
       {
         category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
-        threshold: 'BLOCK_MEDIUM_AND_ABOVE',
+        threshold: 'BLOCK_LOW_AND_ABOVE', // Tightened this setting
       },
       {
         category: 'HARM_CATEGORY_CIVIC_INTEGRITY',
@@ -92,7 +93,7 @@ const storySynthesisFlow = ai.defineFlow(
         console.error("Story synthesis response was undefined, malformed, or missing title/story for input:", input);
         return {
           title: '生成標題失敗',
-          story: '無法合成故事或標題，請稍後再試或調整您的5W1H元素。可能是內容觸發了安全限制。',
+          story: '無法合成故事或標題，請稍後再試或調整您的5W1H元素。可能是內容觸發了安全限制或AI未能正確回應。',
         };
       }
       return {
@@ -101,7 +102,8 @@ const storySynthesisFlow = ai.defineFlow(
       };
     } catch (e: any) {
       console.error("Error during story synthesis flow:", e);
-      if (e.message && e.message.includes('blocked by safety settings')) {
+      // Check if the error message indicates a safety block from Genkit/Gemini
+      if (e.message && (e.message.includes('blocked by safety settings') || e.message.includes('candidate was blocked by safety reasons'))) {
          return {
           title: '內容生成受阻',
           story: '合成故事時，部分內容可能因觸發安全限制而被阻擋。請嘗試調整輸入的5W1H元素，或簡化內容後再試。',
