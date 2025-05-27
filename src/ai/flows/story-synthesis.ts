@@ -23,7 +23,7 @@ const StorySynthesisInputSchema = z.object({
 export type StorySynthesisInput = z.infer<typeof StorySynthesisInputSchema>;
 
 const StorySynthesisOutputSchema = z.object({
-  story: z.string().describe('The synthesized story or paragraph based on the 5W1H elements. This content should be in Traditional Chinese (繁體中文).'),
+  story: z.string().describe('The synthesized story or paragraph based on the 5W1H elements. This content should be in Standard Traditional Chinese (標準繁體中文).'),
 });
 
 export type StorySynthesisOutput = z.infer<typeof StorySynthesisOutputSchema>;
@@ -36,7 +36,8 @@ const storySynthesisPrompt = ai.definePrompt({
   name: 'storySynthesisPrompt',
   input: {schema: StorySynthesisInputSchema},
   output: {schema: StorySynthesisOutputSchema},
-  prompt: `You are a creative AI assistant specializing in weaving compelling short stories or descriptive paragraphs in Traditional Chinese (繁體中文), tailored to Taiwanese language customs and cultural nuances.
+  prompt: `You are a creative AI assistant specializing in weaving compelling short stories or descriptive paragraphs in Standard Traditional Chinese (標準繁體中文).
+Ensure the language used is formal and suitable for a general Taiwanese audience, avoiding colloquialisms or dialect-specific terms.
 
 Given the following 5W1H elements:
 Who: {{{who}}}
@@ -47,9 +48,8 @@ Why: {{{why}}}
 How: {{{how}}}
 
 Combine these elements into a coherent and engaging short story or a descriptive paragraph.
-Ensure the narrative flows naturally and the language used is common in Taiwan.
 The story should be a creative interpretation and expansion of the provided elements.
-Output the story as a single string in the 'story' field of the JSON response.
+Output the story as a single string in the 'story' field of the JSON response, using Standard Traditional Chinese.
   `,
 });
 
@@ -64,3 +64,4 @@ const storySynthesisFlow = ai.defineFlow(
     return output!;
   }
 );
+
