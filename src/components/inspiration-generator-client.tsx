@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useEffect, useCallback } from 'react'; // Added React import
+import React, { useState, useEffect, useCallback } from 'react';
 import type { W1HKey } from '@/lib/constants';
 import { W1H_ELEMENTS, ALL_W1H_KEYS } from '@/lib/constants';
 import W1HElementCard from '@/components/w1h-element-card';
@@ -15,6 +15,15 @@ import { randomElementGenerate, RandomElementGenerationInput, RandomElementGener
 import { Loader2, Sparkles, CheckCircle2, Shuffle, BookText, Copy, FileText } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 
 type W1HState = {
@@ -27,6 +36,12 @@ type W1HState = {
 interface SynthesizedContent {
   title: string;
   story: string;
+}
+
+interface RefinementChange {
+  label: string;
+  original: string;
+  refined: string;
 }
 
 const W1H_CARD_COLORS: Record<W1HKey, string> = {
@@ -79,12 +94,11 @@ const StyledSuggestionLine = ({ text }: { text: string }) => {
     );
   }
   
-  // Preserve indentation for list items like "1. ..." or "- ..."
   if (trimmedLine.match(/^(\d+\.|\-)\s/)) {
-    return <>{text}</>; // Return as is, relying on whitespace-pre-wrap and AI formatting
+    return <>{text}</>; 
   }
 
-  return <>{text}</>; // Default: return the original line
+  return <>{text}</>;
 };
 
 
@@ -113,6 +127,10 @@ export default function InspirationGeneratorClient() {
   const [grammarProgress, setGrammarProgress] = useState(0);
   const [consistencyResult, setConsistencyResult] = useState<ConsistencyCheckOutput | null>(null);
   const [synthesizedContent, setSynthesizedContent] = useState<SynthesizedContent | null>(null);
+  
+  const [refinementChanges, setRefinementChanges] = useState<RefinementChange[]>([]);
+  const [isRefinementDialogOpen, setIsRefinementDialogOpen] = useState(false);
+
 
   const handleTextChange = (key: W1HKey, text: string) => {
     setW1hData((prev) => ({ ...prev, [key]: { ...prev[key], text } }));
@@ -150,7 +168,8 @@ export default function InspirationGeneratorClient() {
     setSynthesizedContent(null);
     setConsistencyResult(null);
     
-    const newW1hData = { ...w1hData };
+    const originalW1hData = JSON.parse(JSON.stringify(w1hData)) as W1HState;
+    const newW1hData = { ...originalW1hData };
     const elementsToProcessKeys = ALL_W1H_KEYS.filter(key => !newW1hData[key].isLocked);
     const totalToProcessCount = elementsToProcessKeys.length;
     
@@ -200,27 +219,28 @@ export default function InspirationGeneratorClient() {
     setGrammarProgress(0);
     setConsistencyResult(null); 
     setSynthesizedContent(null);
+    setRefinementChanges([]);
 
+
+    const originalW1hData = JSON.parse(JSON.stringify(w1hData)) as W1HState;
+    const newW1hData = { ...originalW1hData };
+    
     const elementsToRefine = ALL_W1H_KEYS;
     const totalToRefine = elementsToRefine.length;
-    let refinedCount = 0;
-    let actuallyRefinedCount = 0;
-
-
+    let processedCount = 0;
+    
     if (totalToRefine === 0) {
         setIsLoading(prev => ({ ...prev, grammar: false }));
         return;
     }
     setGrammarProgress(1); 
 
-    const newW1hData = { ...w1hData };
-
     for (let i = 0; i < totalToRefine; i++) {
       const key = elementsToRefine[i];
       const originalText = newW1hData[key].text;
-      if (!originalText.trim()) { // Skip empty or whitespace-only text
-        refinedCount++;
-        setGrammarProgress(Math.min((refinedCount / totalToRefine) * 100, 100));
+      if (!originalText.trim()) { 
+        processedCount++;
+        setGrammarProgress(Math.min((processedCount / totalToRefine) * 100, 100));
         continue;
       }
       try {
@@ -230,27 +250,42 @@ export default function InspirationGeneratorClient() {
           elementLabel: W1H_ELEMENTS[key].label,
         };
         const result = await grammarImprovement(input);
-        if (result.refinedText !== originalText) {
-          actuallyRefinedCount++;
-        }
         newW1hData[key] = { ...newW1hData[key], text: result.refinedText };
       } catch (error) {
         console.error(`Grammar refinement error for ${key}:`, error);
         toast({ variant: "destructive", title: `「${W1H_ELEMENTS[key].label}」潤飾失敗`, description: "服務發生錯誤，該項目保留原內容。" });
       } finally {
-        refinedCount++;
-        setGrammarProgress(Math.min((refinedCount / totalToRefine) * 100, 100));
+        processedCount++;
+        setGrammarProgress(Math.min((processedCount / totalToRefine) * 100, 100));
       }
     }
+    setW1hData(newW1hData); // Update the main state with all refinements
 
-    setW1hData(newW1hData);
+    // Calculate changes for the dialog
+    const changesMade: RefinementChange[] = [];
+    let actualModificationsCount = 0;
+    for (const key of ALL_W1H_KEYS) {
+      const originalText = originalW1hData[key as W1HKey].text;
+      const refinedText = newW1hData[key as W1HKey].text;
+      // Compare trimmed versions to avoid flagging whitespace-only changes
+      if (originalText.trim() !== refinedText.trim()) { 
+        changesMade.push({
+          label: W1H_ELEMENTS[key as W1HKey].label,
+          original: originalText,
+          refined: refinedText,
+        });
+        actualModificationsCount++;
+      }
+    }
+    setRefinementChanges(changesMade);
     setIsLoading(prev => ({ ...prev, grammar: false }));
     
-    if (actuallyRefinedCount > 0) {
-      toast({ title: "語法潤飾完畢", description: `已成功為 ${actuallyRefinedCount} 個項目潤飾語法與流暢度。` });
-    } else if (totalToRefine > 0 && ALL_W1H_KEYS.some(k => w1hData[k].text.trim() !== '')) { // Processed items, none changed, and some had text
+    if (actualModificationsCount > 0) {
+      setIsRefinementDialogOpen(true); // Open the dialog
+      toast({ title: "語法潤飾完畢", description: `已為 ${actualModificationsCount} 個項目提升語法與流暢度。請查看詳細變更。` });
+    } else if (totalToRefine > 0 && ALL_W1H_KEYS.some(k => originalW1hData[k].text.trim() !== '')) { 
       toast({ title: "語法檢查完畢", description: "所有項目的語法均已相當通順，無需調整。" });
-    } else if (totalToRefine > 0) { // Processed items, but all were empty or became empty
+    } else if (totalToRefine > 0) { 
       toast({ title: "語法潤飾", description: "沒有可潤飾的內容。" });
     }
   };
@@ -407,7 +442,7 @@ export default function InspirationGeneratorClient() {
 
       {isLoading.consistency && (
         <div className="my-6 max-w-sm mx-auto px-4">
-          <Progress value={50} className="w-full h-2.5 rounded-full bg-primary/30 [&>div]:bg-primary" />
+          <Progress value={50} className="w-full h-2.5 rounded-full bg-primary/30 [&>div]:bg-primary" /> {/* Using indeterminate-like progress */}
           <p className="text-sm text-muted-foreground text-center mt-2">
             正在檢查一致性...
           </p>
@@ -416,12 +451,49 @@ export default function InspirationGeneratorClient() {
 
       {isLoading.synthesis && (
         <div className="my-6 max-w-sm mx-auto px-4">
-          <Progress value={50} className="w-full h-2.5 rounded-full bg-primary/30 [&>div]:bg-primary" />
+          <Progress value={50} className="w-full h-2.5 rounded-full bg-primary/30 [&>div]:bg-primary" /> {/* Using indeterminate-like progress */}
           <p className="text-sm text-muted-foreground text-center mt-2">
             正在合成故事靈感...
           </p>
         </div>
       )}
+
+      {isRefinementDialogOpen && (
+          <Dialog open={isRefinementDialogOpen} onOpenChange={setIsRefinementDialogOpen}>
+            <DialogContent className="sm:max-w-[600px] max-h-[80vh] flex flex-col">
+              <DialogHeader>
+                <DialogTitle>語法潤飾結果</DialogTitle>
+                <DialogDescription>
+                  以下是本次潤飾所做的變更：
+                </DialogDescription>
+              </DialogHeader>
+              <ScrollArea className="flex-grow pr-6 -mr-6"> 
+                <div className="space-y-4 py-4">
+                  {refinementChanges.length > 0 ? (
+                    refinementChanges.map((change, index) => (
+                      <div key={index} className="p-3 border rounded-md bg-muted/30 dark:bg-muted/20">
+                        <h4 className="font-semibold text-primary mb-2">{change.label}</h4>
+                        <div className="mb-2">
+                          <p className="text-xs text-muted-foreground mb-0.5">原文：</p>
+                          <p className="text-sm p-2 bg-background/70 dark:bg-background/50 rounded border border-dashed border-input whitespace-pre-wrap">{change.original.trim() || "（無內容）"}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-green-600 dark:text-green-500 mb-0.5">潤飾後：</p>
+                          <p className="text-sm p-2 bg-background/70 dark:bg-background/50 rounded border border-green-500/50 whitespace-pre-wrap">{change.refined.trim() || "（無內容）"}</p>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-center text-muted-foreground py-4">所有項目的語法均已相當通順，無需調整。</p>
+                  )}
+                </div>
+              </ScrollArea>
+              <DialogFooter className="mt-2">
+                <Button onClick={() => setIsRefinementDialogOpen(false)}>關閉</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
 
 
       {consistencyResult && (
@@ -434,9 +506,9 @@ export default function InspirationGeneratorClient() {
             {consistencyResult.isConsistent 
               ? "目前的5W1H元素組合看起來很棒，前後呼應！" 
               : (
-                <ul className="list-disc list-inside ml-2 space-y-2.5 leading-relaxed">
+                <ul className="list-none space-y-2.5 leading-relaxed mt-2"> {/* Changed from list-disc to list-none, added mt-2 */}
                   {consistencyResult.suggestions.map((suggestionItem, index) => (
-                    <li key={index} className="whitespace-pre-wrap">
+                    <li key={index} className="whitespace-pre-wrap p-3 border rounded-md bg-muted/30 dark:bg-muted/20"> {/* Added styling to li */}
                       {suggestionItem.split('\n').map((line, lineIndex, arr) => (
                         <React.Fragment key={lineIndex}>
                           <StyledSuggestionLine text={line} />
@@ -494,7 +566,4 @@ export default function InspirationGeneratorClient() {
     </div>
   );
 }
-
-    
-
     
