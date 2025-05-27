@@ -1,6 +1,7 @@
 
 "use client";
 
+import React, { useEffect, useRef } from 'react';
 import type { W1HElement } from '@/lib/constants';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,17 +9,17 @@ import { Textarea } from '@/components/ui/textarea';
 import { Lock, Unlock, Shuffle, Loader2 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import confetti from 'canvas-confetti';
 
 interface W1HElementCardProps {
   element: W1HElement;
   value: string;
   isLocked: boolean;
-  isLoading: boolean; // Loading state for this specific card's random generation
+  isLoading: boolean;
   onValueChange: (value: string) => void;
   onRandom: () => void;
   onToggleLock: () => void;
-  useAiRandom?: boolean; // This prop might become vestigial if all "random" is "AI-powered"
-  mainOperationInProgress?: boolean; // Is a global operation like "Random All" or "Grammar" in progress?
+  mainOperationInProgress?: boolean;
   cardClassName?: string;
 }
 
@@ -30,17 +31,42 @@ export default function W1HElementCard({
   onValueChange,
   onRandom,
   onToggleLock,
-  useAiRandom = true, // Defaulting to true as most "random" is now AI-driven.
   mainOperationInProgress = false,
   cardClassName,
 }: W1HElementCardProps) {
-  const randomButtonText = "隨機產生"; // Removed "(AI)"
-  const randomButtonAriaLabel = `隨機產生${element.label}`; // Removed "(使用AI)"
-
+  const randomButtonText = "隨機產生";
+  const randomButtonAriaLabel = `隨機產生${element.label}`;
   const isButtonDisabled = isLocked || isLoading || mainOperationInProgress;
 
+  const prevIsLoadingRef = useRef(isLoading);
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    // Check if loading has just finished (was true, now false) and we have a new value
+    if (prevIsLoadingRef.current && !isLoading && value) {
+      if (cardRef.current) {
+        const rect = cardRef.current.getBoundingClientRect();
+        // Calculate origin for confetti: center of the card's top edge
+        const x = (rect.left + rect.width / 2) / window.innerWidth;
+        const y = rect.top / window.innerHeight;
+
+        confetti({
+          particleCount: 80,
+          spread: 60,
+          origin: { x, y },
+          zIndex: 10000, // Ensure confetti is on top of other elements
+          angle: 90, // Shoots straight up initially
+          startVelocity: 25,
+          ticks: 150, // Duration of confetti
+          colors: ['#FFC700', '#FF8A00', '#4285F4', '#34A853', '#EA4335'] // Example colors
+        });
+      }
+    }
+    prevIsLoadingRef.current = isLoading;
+  }, [isLoading, value]);
+
   return (
-    <Card className={cn("flex flex-col shadow-lg", cardClassName)}>
+    <Card ref={cardRef} className={cn("flex flex-col shadow-lg overflow-hidden", cardClassName)}> {/* Added overflow-hidden for safety with confetti */}
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-xl font-semibold text-primary">{element.label}</CardTitle>
         <TooltipProvider>
@@ -61,7 +87,7 @@ export default function W1HElementCard({
           value={value}
           onChange={(e) => onValueChange(e.target.value)}
           placeholder={element.placeholder}
-          className="flex-grow min-h-[100px] text-base rounded-md shadow-inner bg-background/50 dark:bg-card" // Ensure textarea background contrasts with card
+          className="flex-grow min-h-[100px] text-base rounded-md shadow-inner bg-background/50 dark:bg-card"
           disabled={isLocked || mainOperationInProgress}
           aria-label={element.label}
         />
@@ -82,5 +108,3 @@ export default function W1HElementCard({
     </Card>
   );
 }
-
-    
