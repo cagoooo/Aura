@@ -51,7 +51,7 @@ const StyledSuggestionLine = ({ text }: { text: string }) => {
     return (
       <>
         {leadingSpace}
-        <span className="font-semibold text-primary">{elementMatch[1]}：</span>
+        <span className="font-semibold text-primary">{elementMatch[1]}</span>
         {elementMatch[2].trimStart()}
       </>
     );
@@ -62,7 +62,7 @@ const StyledSuggestionLine = ({ text }: { text: string }) => {
     return (
       <>
         {leadingSpace}
-        <span className="font-semibold text-destructive">{problemMatch[1]}：</span>
+        <span className="font-semibold text-destructive">{problemMatch[1]}</span>
         {problemMatch[2].trimStart()}
       </>
     );
@@ -73,7 +73,7 @@ const StyledSuggestionLine = ({ text }: { text: string }) => {
     return (
       <>
         {leadingSpace}
-        <span className="font-semibold text-green-600 dark:text-green-500">{adviceMatch[1]}：</span>
+        <span className="font-semibold text-green-600 dark:text-green-500">{adviceMatch[1]}</span>
         {adviceMatch[2].trimStart()}
       </>
     );
@@ -204,6 +204,8 @@ export default function InspirationGeneratorClient() {
     const elementsToRefine = ALL_W1H_KEYS;
     const totalToRefine = elementsToRefine.length;
     let refinedCount = 0;
+    let actuallyRefinedCount = 0;
+
 
     if (totalToRefine === 0) {
         setIsLoading(prev => ({ ...prev, grammar: false }));
@@ -215,13 +217,22 @@ export default function InspirationGeneratorClient() {
 
     for (let i = 0; i < totalToRefine; i++) {
       const key = elementsToRefine[i];
+      const originalText = newW1hData[key].text;
+      if (!originalText.trim()) { // Skip empty or whitespace-only text
+        refinedCount++;
+        setGrammarProgress(Math.min((refinedCount / totalToRefine) * 100, 100));
+        continue;
+      }
       try {
         const input: GrammarImprovementInput = {
           elementType: key,
-          text: newW1hData[key].text,
+          text: originalText,
           elementLabel: W1H_ELEMENTS[key].label,
         };
         const result = await grammarImprovement(input);
+        if (result.refinedText !== originalText) {
+          actuallyRefinedCount++;
+        }
         newW1hData[key] = { ...newW1hData[key], text: result.refinedText };
       } catch (error) {
         console.error(`Grammar refinement error for ${key}:`, error);
@@ -234,7 +245,14 @@ export default function InspirationGeneratorClient() {
 
     setW1hData(newW1hData);
     setIsLoading(prev => ({ ...prev, grammar: false }));
-    toast({ title: "語法潤飾成功", description: "已協助改善內容的語法與流暢度。" });
+    
+    if (actuallyRefinedCount > 0) {
+      toast({ title: "語法潤飾完畢", description: `已成功為 ${actuallyRefinedCount} 個項目潤飾語法與流暢度。` });
+    } else if (totalToRefine > 0 && ALL_W1H_KEYS.some(k => w1hData[k].text.trim() !== '')) { // Processed items, none changed, and some had text
+      toast({ title: "語法檢查完畢", description: "所有項目的語法均已相當通順，無需調整。" });
+    } else if (totalToRefine > 0) { // Processed items, but all were empty or became empty
+      toast({ title: "語法潤飾", description: "沒有可潤飾的內容。" });
+    }
   };
 
   const handleConsistencyCheck = async () => {
@@ -468,7 +486,6 @@ export default function InspirationGeneratorClient() {
             onValueChange={(text) => handleTextChange(key, text)}
             onRandom={() => handleRandomGenerate(key)}
             onToggleLock={() => handleToggleLock(key)}
-            useAiRandom={true}
             mainOperationInProgress={anyLoading}
             cardClassName={W1H_CARD_COLORS[key]}
           />

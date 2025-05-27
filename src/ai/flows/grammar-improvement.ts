@@ -21,7 +21,7 @@ const GrammarImprovementInputSchema = z.object({
 export type GrammarImprovementInput = z.infer<typeof GrammarImprovementInputSchema>;
 
 const GrammarImprovementOutputSchema = z.object({
-  refinedText: z.string().describe('The grammatically improved text for the element, in Traditional Chinese, using natural phrasing for Taiwanese users and avoiding Mainland Chinese specific terms.'),
+  refinedText: z.string().describe('The grammatically improved text for the element, in Traditional Chinese, using natural phrasing for Taiwanese users and avoiding Mainland Chinese specific terms. This should be a significant improvement if the original text was awkward or ungrammatical.'),
 });
 export type GrammarImprovementOutput = z.infer<typeof GrammarImprovementOutputSchema>;
 
@@ -33,9 +33,12 @@ const grammarImprovementPrompt = ai.definePrompt({
   name: 'grammarImprovementPrompt',
   input: {schema: GrammarImprovementInputSchema},
   output: {schema: GrammarImprovementOutputSchema},
-  prompt: `You are a helpful assistant specialized in improving the grammar and fluency of sentences in Traditional Chinese for users in Taiwan.
-You will receive a single story element type (e.g., '誰 (Who)'), its current text.
-Improve the grammar and fluency of this text so that it is natural for Taiwanese Mandarin speakers. Ensure the refined text uses common Traditional Chinese phrasing found in Taiwan and avoids Mainland Chinese colloquialisms or specific terminology.
+  prompt: `You are an expert editor specializing in refining and enhancing text in Traditional Chinese for a Taiwanese audience. Your goal is not just to correct grammatical errors, but to significantly improve the fluency, naturalness, and impact of the provided text. If the text is already perfect or requires no substantial improvement for clarity and naturalness in Taiwanese Mandarin, return it unchanged. However, if it can be made more concise, vivid, grammatically correct, or engaging while maintaining its original meaning for the element type, please make those improvements.
+
+You will receive a single story element type, its display label, and its current text.
+Thoroughly review the 'Current Text'.
+If the text is awkward, unclear, ungrammatical, or could be phrased more naturally or impactfully for Taiwanese Mandarin speakers, provide a refined version.
+Ensure the 'refinedText' uses common Traditional Chinese phrasing found in Taiwan and avoids Mainland Chinese colloquialisms or specific terminology. The refined text should be a clear and noticeable improvement.
 
 Element Label: {{{elementLabel}}}
 Element Type: {{{elementType}}}
@@ -43,7 +46,7 @@ Current Text: {{{text}}}
 
 Return the improved text in the following JSON format:
 {
-  "refinedText": "improved text for the element"
+  "refinedText": "The significantly improved and natural-sounding text for the element, or the original text if no substantial improvement was necessary or possible."
 }
 `,
 });
@@ -55,9 +58,13 @@ const grammarImprovementFlow = ai.defineFlow(
     outputSchema: GrammarImprovementOutputSchema,
   },
   async input => {
+    // If input text is empty, no need to call AI.
+    if (!input.text.trim()) {
+      return { refinedText: input.text };
+    }
     const {output} = await grammarImprovementPrompt(input);
-    if (!output || !output.refinedText) {
-      // Fallback to original text if AI fails or returns empty
+    if (!output || typeof output.refinedText === 'undefined') {
+      // Fallback to original text if AI fails or returns malformed response
       return { refinedText: input.text };
     }
     return output;
