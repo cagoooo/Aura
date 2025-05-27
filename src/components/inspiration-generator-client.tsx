@@ -338,11 +338,11 @@ export default function InspirationGeneratorClient() {
           <AlertTitle className={`font-semibold ${consistencyResult.isConsistent ? 'text-green-700 dark:text-green-300' : 'text-amber-700 dark:text-amber-300'}`}>
             {consistencyResult.isConsistent ? "內容一致性良好！" : "一致性建議"}
           </AlertTitle>
-          <AlertDescription className={consistencyResult.isConsistent ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}>
+          <AlertDescription className={`text-sm ${consistencyResult.isConsistent ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}`}>
             {consistencyResult.isConsistent 
               ? "目前的5W1H元素組合看起來很棒，前後呼應！" 
               : (
-                <ul className="list-disc list-inside ml-2">
+                <ul className="list-disc list-inside ml-2 space-y-1.5">
                   {consistencyResult.suggestions.map((suggestion, index) => (
                     <li key={index}>{suggestion}</li>
                   ))}
