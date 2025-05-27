@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { consistencyCheck, ConsistencyCheckInput, ConsistencyCheckOutput } from '@/ai/flows/consistency-check';
 import { grammarImprovement, GrammarImprovementInput, GrammarImprovementOutput } from '@/ai/flows/grammar-improvement';
 import { storySynthesis, StorySynthesisInput, StorySynthesisOutput } from '@/ai/flows/story-synthesis';
-import { Loader2, Sparkles, CheckCircle2, Shuffle, BookText } from 'lucide-react';
+import { Loader2, Sparkles, CheckCircle2, Shuffle, BookText, Copy } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 type W1HState = {
@@ -103,7 +103,6 @@ export default function InspirationGeneratorClient() {
       setW1hData((prev) => {
         const newState = { ...prev };
         for (const key of ALL_W1H_KEYS) {
-          // Update all items for refinement, even locked ones, as refinement doesn't change meaning.
           newState[key].text = result[key as W1HKey] || prev[key as W1HKey].text;
         }
         return newState;
@@ -168,6 +167,17 @@ export default function InspirationGeneratorClient() {
       toast({ variant: "destructive", title: "內容合成失敗", description: "AI服務發生錯誤，請稍後再試。" });
     } finally {
       setIsLoading(prev => ({ ...prev, synthesis: false }));
+    }
+  };
+
+  const handleCopyToClipboard = async (textToCopy: string | null) => {
+    if (!textToCopy) return;
+    try {
+      await navigator.clipboard.writeText(textToCopy);
+      toast({ title: "複製成功", description: "故事靈感已複製到剪貼簿！" });
+    } catch (err) {
+      console.error('Failed to copy text: ', err);
+      toast({ variant: "destructive", title: "複製失敗", description: "無法複製內容，請再試一次。" });
     }
   };
   
@@ -236,8 +246,17 @@ export default function InspirationGeneratorClient() {
 
       {synthesizedStory && (
         <Card className="mb-8 rounded-lg shadow-md">
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-xl font-semibold text-primary">AI 合成故事靈感</CardTitle>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => handleCopyToClipboard(synthesizedStory)}
+              aria-label="複製故事靈感"
+              className="text-primary hover:text-primary/80"
+            >
+              <Copy className="h-5 w-5" />
+            </Button>
           </CardHeader>
           <CardContent>
             <p className="text-foreground whitespace-pre-wrap">{synthesizedStory}</p>
