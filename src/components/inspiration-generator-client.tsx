@@ -135,10 +135,10 @@ export default function InspirationGeneratorClient() {
       const result = await randomElementGenerate(input);
       setW1hData((prev) => ({ ...prev, [key]: { ...prev[key], text: result.generatedText } }));
     } catch (error) {
-      console.error(`AI random generation error for ${key}:`, error);
+      console.error(`Random generation error for ${key}:`, error);
       const randomText = getRandomItem(W1H_ELEMENTS[key].options);
       setW1hData((prev) => ({ ...prev, [key]: { ...prev[key], text: randomText } }));
-      toast({ variant: "destructive", title: "AI隨機產生失敗", description: `為「${W1H_ELEMENTS[key].label}」項目AI隨機產生內容時發生錯誤，已使用備用選項。` });
+      toast({ variant: "destructive", title: "隨機產生失敗", description: `為「${W1H_ELEMENTS[key].label}」項目隨機產生內容時發生錯誤，已使用備用選項。` });
     } finally {
       setIsLoading(prev => ({ ...prev, elements: { ...prev.elements, [key]: false } }));
     }
@@ -178,7 +178,7 @@ export default function InspirationGeneratorClient() {
         newW1hData[key] = { ...newW1hData[key], text: result.generatedText };
         generatedCount++;
       } catch (error) {
-        console.error(`AI random generation error for ${key} during random all:`, error);
+        console.error(`Random generation error for ${key} during random all:`, error);
         newW1hData[key] = { ...newW1hData[key], text: getRandomItem(W1H_ELEMENTS[key].options) };
       } finally {
          processedCount++;
@@ -189,9 +189,9 @@ export default function InspirationGeneratorClient() {
     setW1hData(newW1hData);
     setIsLoading(prev => ({ ...prev, randomAll: false }));
     if (generatedCount > 0) {
-        toast({ title: "全部隨機完畢 (AI)", description: `已為 ${generatedCount} 個未鎖定項目AI產生新內容。` });
+        toast({ title: "全部隨機完畢", description: `已為 ${generatedCount} 個未鎖定項目產生新內容。` });
     } else if (totalToProcessCount > 0) {
-        toast({ title: "全部隨機完畢", description: `處理了 ${totalToProcessCount} 個項目，但由於錯誤或AI未返回內容，部分可能使用備用選項。` });
+        toast({ title: "全部隨機完畢", description: `處理了 ${totalToProcessCount} 個項目，但由於錯誤或未返回內容，部分可能使用備用選項。` });
     }
   };
 
@@ -225,7 +225,7 @@ export default function InspirationGeneratorClient() {
         newW1hData[key] = { ...newW1hData[key], text: result.refinedText };
       } catch (error) {
         console.error(`Grammar refinement error for ${key}:`, error);
-        toast({ variant: "destructive", title: `「${W1H_ELEMENTS[key].label}」潤飾失敗`, description: "AI服務發生錯誤，該項目保留原內容。" });
+        toast({ variant: "destructive", title: `「${W1H_ELEMENTS[key].label}」潤飾失敗`, description: "服務發生錯誤，該項目保留原內容。" });
       } finally {
         refinedCount++;
         setGrammarProgress(Math.min((refinedCount / totalToRefine) * 100, 100));
@@ -234,7 +234,7 @@ export default function InspirationGeneratorClient() {
 
     setW1hData(newW1hData);
     setIsLoading(prev => ({ ...prev, grammar: false }));
-    toast({ title: "語法潤飾成功", description: "AI已協助改善內容的語法與流暢度。" });
+    toast({ title: "語法潤飾成功", description: "已協助改善內容的語法與流暢度。" });
   };
 
   const handleConsistencyCheck = async () => {
@@ -256,11 +256,11 @@ export default function InspirationGeneratorClient() {
       if (result.isConsistent) {
         toast({ title: "內容一致性檢查完畢", description: "太棒了！目前的內容看起來前後一致。" });
       } else {
-         toast({ title: "內容一致性檢查完畢", description: "AI提供了一些調整建議，請參考下方提示。" });
+         toast({ title: "內容一致性檢查完畢", description: "提供了一些調整建議，請參考下方提示。" });
       }
     } catch (error) {
       console.error("Consistency check error:", error);
-      toast({ variant: "destructive", title: "一致性檢查失敗", description: "AI服務發生錯誤，請稍後再試。" });
+      toast({ variant: "destructive", title: "一致性檢查失敗", description: "服務發生錯誤，請稍後再試。" });
       setConsistencyResult({isConsistent: false, suggestions: ['進行一致性檢查時發生錯誤，無法提供建議。']});
     } finally {
       setIsLoading(prev => ({ ...prev, consistency: false }));
@@ -283,11 +283,11 @@ export default function InspirationGeneratorClient() {
     try {
       const result = await storySynthesis(currentTexts);
       setSynthesizedContent(result);
-      toast({ title: "內容合成成功", description: "AI已根據您的5W1H元素生成了一段故事靈感！" });
+      toast({ title: "內容合成成功", description: "已根據您的5W1H元素生成了一段故事靈感！" });
     } catch (error) {
       console.error("Story synthesis error:", error);
-      toast({ variant: "destructive", title: "內容合成失敗", description: "AI服務發生錯誤，請稍後再試。" });
-      setSynthesizedContent({ title: 'AI合成標題失敗', story: 'AI合成故事時遇到問題，請稍後再試。'});
+      toast({ variant: "destructive", title: "內容合成失敗", description: "服務發生錯誤，請稍後再試。" });
+      setSynthesizedContent({ title: '合成標題失敗', story: '合成故事時遇到問題，請稍後再試。'});
     } finally {
       setIsLoading(prev => ({ ...prev, synthesis: false }));
     }
@@ -321,7 +321,7 @@ export default function InspirationGeneratorClient() {
           }));
         })
         .catch(error => {
-          console.error(`Initial AI random generation error for ${key}:`, error);
+          console.error(`Initial random generation error for ${key}:`, error);
           setW1hData(prevData => ({
             ...prevData,
             [key]: { ...prevData[key], text: getRandomItem(W1H_ELEMENTS[key].options) },
@@ -347,25 +347,25 @@ export default function InspirationGeneratorClient() {
   return (
     <div className="container mx-auto px-4 py-8">
       <p className="text-center text-lg text-foreground mb-8 max-w-prose mx-auto">
-        點擊「隨機產生 (AI)」來獲得靈感，或使用AI工具「潤飾語法」、「檢查一致性」及「合成內容」來完善您的創意點子！
+        點擊「隨機產生」來獲得靈感，或使用工具「潤飾語法」、「檢查一致性」及「合成內容」來完善您的創意點子！
       </p>
 
       <div className="flex flex-col sm:flex-row gap-4 mb-6 justify-center flex-wrap">
         <Button onClick={handleRandomAll} disabled={anyLoading || anyElementLoading} className="bg-accent hover:bg-accent/90 text-accent-foreground flex-1 sm:flex-none rounded-lg shadow-md">
           {isLoading.randomAll ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Shuffle className="mr-2 h-5 w-5" />}
-          全部隨機 (AI)
+          全部隨機
         </Button>
         <Button onClick={handleGrammarRefinement} disabled={anyLoading || anyElementLoading} className="bg-primary hover:bg-primary/90 text-primary-foreground flex-1 sm:flex-none rounded-lg shadow-md">
           {isLoading.grammar ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Sparkles className="mr-2 h-5 w-5" />}
-          潤飾語法 (AI)
+          潤飾語法
         </Button>
         <Button onClick={handleConsistencyCheck} disabled={anyLoading || anyElementLoading} className="bg-primary hover:bg-primary/90 text-primary-foreground flex-1 sm:flex-none rounded-lg shadow-md">
           {isLoading.consistency ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <CheckCircle2 className="mr-2 h-5 w-5" />}
-          檢查一致性 (AI)
+          檢查一致性
         </Button>
         <Button onClick={handleStorySynthesis} disabled={anyLoading || anyElementLoading} className="bg-primary hover:bg-primary/90 text-primary-foreground flex-1 sm:flex-none rounded-lg shadow-md">
           {isLoading.synthesis ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <BookText className="mr-2 h-5 w-5" />}
-          合成內容 (AI)
+          合成內容
         </Button>
       </div>
 
@@ -373,7 +373,7 @@ export default function InspirationGeneratorClient() {
         <div className="my-6 max-w-sm mx-auto px-4">
           <Progress value={randomAllProgress} className="w-full h-2.5 rounded-full bg-accent/30 [&>div]:bg-accent" />
           <p className="text-sm text-muted-foreground text-center mt-2">
-            AI 正在努力產生靈感... {Math.round(randomAllProgress)}%
+            正在努力產生靈感... {Math.round(randomAllProgress)}%
           </p>
         </div>
       )}
@@ -382,7 +382,7 @@ export default function InspirationGeneratorClient() {
         <div className="my-6 max-w-sm mx-auto px-4">
           <Progress value={grammarProgress} className="w-full h-2.5 rounded-full bg-primary/30 [&>div]:bg-primary" />
           <p className="text-sm text-muted-foreground text-center mt-2">
-            AI 正在潤飾語法... {Math.round(grammarProgress)}%
+            正在潤飾語法... {Math.round(grammarProgress)}%
           </p>
         </div>
       )}
@@ -391,7 +391,7 @@ export default function InspirationGeneratorClient() {
         <div className="my-6 max-w-sm mx-auto px-4">
           <Progress value={50} className="w-full h-2.5 rounded-full bg-primary/30 [&>div]:bg-primary" />
           <p className="text-sm text-muted-foreground text-center mt-2">
-            AI 正在檢查一致性...
+            正在檢查一致性...
           </p>
         </div>
       )}
@@ -400,7 +400,7 @@ export default function InspirationGeneratorClient() {
         <div className="my-6 max-w-sm mx-auto px-4">
           <Progress value={50} className="w-full h-2.5 rounded-full bg-primary/30 [&>div]:bg-primary" />
           <p className="text-sm text-muted-foreground text-center mt-2">
-            AI 正在合成故事靈感...
+            正在合成故事靈感...
           </p>
         </div>
       )}
@@ -439,7 +439,7 @@ export default function InspirationGeneratorClient() {
           <CardHeader className="flex flex-row items-center justify-between p-6 pb-2">
              <div className="flex items-center gap-3">
               <FileText className="h-6 w-6 text-primary" />
-              <CardTitle className="text-xl font-semibold text-primary">{synthesizedContent.title || 'AI 合成故事靈感'}</CardTitle>
+              <CardTitle className="text-xl font-semibold text-primary">{synthesizedContent.title || '合成故事靈感'}</CardTitle>
             </div>
             <Button
               variant="ghost"
@@ -477,3 +477,5 @@ export default function InspirationGeneratorClient() {
     </div>
   );
 }
+
+    

@@ -17,7 +17,7 @@ interface W1HElementCardProps {
   onValueChange: (value: string) => void;
   onRandom: () => void;
   onToggleLock: () => void;
-  useAiRandom?: boolean;
+  useAiRandom?: boolean; // This prop might become vestigial if all "random" is "AI-powered"
   mainOperationInProgress?: boolean; // Is a global operation like "Random All" or "Grammar" in progress?
   cardClassName?: string;
 }
@@ -30,12 +30,12 @@ export default function W1HElementCard({
   onValueChange,
   onRandom,
   onToggleLock,
-  useAiRandom = false,
+  useAiRandom = true, // Defaulting to true as most "random" is now AI-driven.
   mainOperationInProgress = false,
   cardClassName,
 }: W1HElementCardProps) {
-  const randomButtonText = useAiRandom ? "隨機產生 (AI)" : "隨機產生";
-  const randomButtonAriaLabel = `隨機產生${element.label}${useAiRandom ? ' (使用AI)' : ''}`;
+  const randomButtonText = "隨機產生"; // Removed "(AI)"
+  const randomButtonAriaLabel = `隨機產生${element.label}`; // Removed "(使用AI)"
 
   const isButtonDisabled = isLocked || isLoading || mainOperationInProgress;
 
@@ -82,3 +82,5 @@ export default function W1HElementCard({
     </Card>
   );
 }
+
+    

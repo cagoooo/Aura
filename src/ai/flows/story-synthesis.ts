@@ -89,10 +89,10 @@ const storySynthesisFlow = ai.defineFlow(
     try {
       const {output} = await storySynthesisPrompt(input);
       if (!output || !output.story || !output.title) {
-        console.error("Story synthesis AI response was undefined, malformed, or missing title/story for input:", input);
+        console.error("Story synthesis response was undefined, malformed, or missing title/story for input:", input);
         return {
-          title: 'AI生成標題失敗',
-          story: 'AI無法合成故事或標題，請稍後再試或調整您的5W1H元素。可能是內容觸發了安全限制。',
+          title: '生成標題失敗',
+          story: '無法合成故事或標題，請稍後再試或調整您的5W1H元素。可能是內容觸發了安全限制。',
         };
       }
       return {
@@ -104,14 +104,15 @@ const storySynthesisFlow = ai.defineFlow(
       if (e.message && e.message.includes('blocked by safety settings')) {
          return {
           title: '內容生成受阻',
-          story: 'AI合成故事時，部分內容可能因觸發安全限制而被阻擋。請嘗試調整輸入的5W1H元素，或簡化內容後再試。',
+          story: '合成故事時，部分內容可能因觸發安全限制而被阻擋。請嘗試調整輸入的5W1H元素，或簡化內容後再試。',
         };
       }
       return {
-        title: 'AI合成發生錯誤',
-        story: 'AI合成故事時遇到未預期的問題，請稍後再試。',
+        title: '合成發生錯誤',
+        story: '合成故事時遇到未預期的問題，請稍後再試。',
       };
     }
   }
 );
 
+    

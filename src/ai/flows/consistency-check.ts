@@ -90,13 +90,14 @@ const consistencyCheckFlow = ai.defineFlow(
   async input => {
     const {output} = await consistencyCheckPrompt(input);
     if (!output || !output.suggestions) { 
-      console.error("Consistency check AI response was undefined, malformed, or missing suggestions for input:", input);
+      console.error("Consistency check response was undefined, malformed, or missing suggestions for input:", input);
       return {
         isConsistent: false,
-        suggestions: ['AI分析內容時發生錯誤，無法提供一致性建議，請稍後再試或調整輸入內容。'],
+        suggestions: ['分析內容時發生錯誤，無法提供一致性建議，請稍後再試或調整輸入內容。'],
       };
     }
     return output;
   }
 );
 
+    
