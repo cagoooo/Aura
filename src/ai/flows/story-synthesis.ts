@@ -3,7 +3,7 @@
 /**
  * @fileOverview This file defines a Genkit flow for synthesizing a story from 5W1H elements.
  *
- * - `storySynthesis`: Takes 5W1H elements and generates a coherent story or paragraph.
+ * - `storySynthesis`: Takes 5W1H elements and generates a coherent story or paragraph, including a title.
  * - `StorySynthesisInput`: The input type for the `storySynthesis` function.
  * - `StorySynthesisOutput`: The return type for the `storySynthesis` function.
  */
@@ -23,6 +23,7 @@ const StorySynthesisInputSchema = z.object({
 export type StorySynthesisInput = z.infer<typeof StorySynthesisInputSchema>;
 
 const StorySynthesisOutputSchema = z.object({
+  title: z.string().describe('A creative and concise title for the synthesized story, in Standard Traditional Chinese (標準繁體中文).'),
   story: z.string().describe('The synthesized story or paragraph based on the 5W1H elements. This content should be in Standard Traditional Chinese (標準繁體中文).'),
 });
 
@@ -36,7 +37,7 @@ const storySynthesisPrompt = ai.definePrompt({
   name: 'storySynthesisPrompt',
   input: {schema: StorySynthesisInputSchema},
   output: {schema: StorySynthesisOutputSchema},
-  prompt: `You are a creative AI assistant specializing in weaving compelling short stories or descriptive paragraphs in Standard Traditional Chinese (標準繁體中文).
+  prompt: `You are a creative AI assistant specializing in weaving compelling short stories or descriptive paragraphs in Standard Traditional Chinese (標準繁體中文), complete with an appropriate title.
 Ensure the language used is formal and suitable for a general Taiwanese audience, avoiding colloquialisms or dialect-specific terms.
 
 Given the following 5W1H elements:
@@ -47,9 +48,10 @@ Where: {{{where}}}
 Why: {{{why}}}
 How: {{{how}}}
 
-Combine these elements into a coherent and engaging short story or a descriptive paragraph.
-The story should be a creative interpretation and expansion of the provided elements.
-Output the story as a single string in the 'story' field of the JSON response, using Standard Traditional Chinese.
+1.  First, generate a concise, engaging, and relevant title for the story that captures its essence. The title must be in Standard Traditional Chinese.
+2.  Then, combine these elements into a coherent and engaging short story or a descriptive paragraph. The story should be a creative interpretation and expansion of the provided elements.
+
+Output your response as a JSON object matching the schema, including 'title' and 'story' fields.
   `,
 });
 
@@ -61,14 +63,18 @@ const storySynthesisFlow = ai.defineFlow(
   },
   async input => {
     const {output} = await storySynthesisPrompt(input);
-    if (!output) {
-      // Handle the case where the AI response could not be parsed or was empty
+    if (!output || !output.story) {
+      // Handle the case where the AI response could not be parsed or was empty for the story
       console.error("Story synthesis AI response was undefined or malformed for input:", input);
       return {
+        title: 'AI生成標題失敗',
         story: 'AI無法合成故事，請稍後再試或調整您的5W1H元素。',
       };
     }
-    return output;
+    return {
+        title: output.title || 'AI未提供標題', // Provide a fallback if title is missing but story exists
+        story: output.story,
+    };
   }
 );
 

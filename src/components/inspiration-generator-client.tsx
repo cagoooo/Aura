@@ -12,7 +12,7 @@ import { consistencyCheck, ConsistencyCheckInput, ConsistencyCheckOutput } from 
 import { grammarImprovement, GrammarImprovementInput, GrammarImprovementOutput } from '@/ai/flows/grammar-improvement';
 import { storySynthesis, StorySynthesisInput, StorySynthesisOutput } from '@/ai/flows/story-synthesis';
 import { randomElementGenerate, RandomElementGenerationInput, RandomElementGenerationOutput } from '@/ai/flows/random-element-generation';
-import { Loader2, Sparkles, CheckCircle2, Shuffle, BookText, Copy } from 'lucide-react';
+import { Loader2, Sparkles, CheckCircle2, Shuffle, BookText, Copy, FileText } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 
@@ -23,6 +23,11 @@ type W1HState = {
     isLocked: boolean;
   };
 };
+
+interface SynthesizedContent {
+  title: string;
+  story: string;
+}
 
 const W1H_CARD_COLORS: Record<W1HKey, string> = {
   who: 'bg-sky-50 dark:bg-sky-950 border-sky-200 dark:border-sky-800',
@@ -60,7 +65,7 @@ export default function InspirationGeneratorClient() {
   const [randomAllProgress, setRandomAllProgress] = useState(0);
   const [grammarProgress, setGrammarProgress] = useState(0);
   const [consistencyResult, setConsistencyResult] = useState<ConsistencyCheckOutput | null>(null);
-  const [synthesizedStory, setSynthesizedStory] = useState<string | null>(null);
+  const [synthesizedContent, setSynthesizedContent] = useState<SynthesizedContent | null>(null);
 
   const handleTextChange = (key: W1HKey, text: string) => {
     setW1hData((prev) => ({ ...prev, [key]: { ...prev[key], text } }));
@@ -95,7 +100,7 @@ export default function InspirationGeneratorClient() {
   const handleRandomAll = async () => {
     setIsLoading(prev => ({ ...prev, randomAll: true }));
     setRandomAllProgress(0);
-    setSynthesizedStory(null);
+    setSynthesizedContent(null);
     setConsistencyResult(null);
     
     const newW1hData = { ...w1hData };
@@ -136,7 +141,6 @@ export default function InspirationGeneratorClient() {
     }
     setW1hData(newW1hData);
     setIsLoading(prev => ({ ...prev, randomAll: false }));
-    // Do not reset progress to 0 immediately, let it fade with isLoading.randomAll
     if (generatedCount > 0) {
         toast({ title: "全部隨機完畢 (AI)", description: `已為 ${generatedCount} 個未鎖定項目AI產生新內容。` });
     } else if (totalToProcessCount > 0) {
@@ -148,7 +152,7 @@ export default function InspirationGeneratorClient() {
     setIsLoading(prev => ({ ...prev, grammar: true }));
     setGrammarProgress(0);
     setConsistencyResult(null); 
-    setSynthesizedStory(null);
+    setSynthesizedContent(null);
 
     const elementsToRefine = ALL_W1H_KEYS;
     const totalToRefine = elementsToRefine.length;
@@ -164,10 +168,6 @@ export default function InspirationGeneratorClient() {
 
     for (let i = 0; i < totalToRefine; i++) {
       const key = elementsToRefine[i];
-      // Skip locked items for grammar refinement as well, or refine them?
-      // For now, let's refine all, as user might have manually edited locked items.
-      // If locked items should be skipped, add: if (newW1hData[key].isLocked) { refinedCount++; setGrammarProgress(...); continue; }
-
       try {
         const input: GrammarImprovementInput = {
           elementType: key,
@@ -178,7 +178,6 @@ export default function InspirationGeneratorClient() {
         newW1hData[key] = { ...newW1hData[key], text: result.refinedText };
       } catch (error) {
         console.error(`Grammar refinement error for ${key}:`, error);
-        // Keep original text if refinement fails
         toast({ variant: "destructive", title: `「${W1H_ELEMENTS[key].label}」潤飾失敗`, description: "AI服務發生錯誤，該項目保留原內容。" });
       } finally {
         refinedCount++;
@@ -194,7 +193,7 @@ export default function InspirationGeneratorClient() {
   const handleConsistencyCheck = async () => {
     setIsLoading(prev => ({ ...prev, consistency: true }));
     setConsistencyResult(null);
-    setSynthesizedStory(null);
+    setSynthesizedContent(null);
     const currentTexts: ConsistencyCheckInput = {
       who: w1hData.who.text,
       what: w1hData.what.text,
@@ -223,7 +222,7 @@ export default function InspirationGeneratorClient() {
 
   const handleStorySynthesis = async () => {
     setIsLoading(prev => ({ ...prev, synthesis: true }));
-    setSynthesizedStory(null);
+    setSynthesizedContent(null);
     setConsistencyResult(null);
     const currentTexts: StorySynthesisInput = {
       who: w1hData.who.text,
@@ -236,20 +235,20 @@ export default function InspirationGeneratorClient() {
 
     try {
       const result = await storySynthesis(currentTexts);
-      setSynthesizedStory(result.story);
+      setSynthesizedContent(result);
       toast({ title: "內容合成成功", description: "AI已根據您的5W1H元素生成了一段故事靈感！" });
-    } catch (error)
-     {
+    } catch (error) {
       console.error("Story synthesis error:", error);
       toast({ variant: "destructive", title: "內容合成失敗", description: "AI服務發生錯誤，請稍後再試。" });
-       setSynthesizedStory('AI合成故事時遇到問題，請稍後再試。');
+      setSynthesizedContent({ title: 'AI合成標題失敗', story: 'AI合成故事時遇到問題，請稍後再試。'});
     } finally {
       setIsLoading(prev => ({ ...prev, synthesis: false }));
     }
   };
 
-  const handleCopyToClipboard = async (textToCopy: string | null) => {
-    if (!textToCopy) return;
+  const handleCopyToClipboard = async (content: SynthesizedContent | null) => {
+    if (!content || !content.story) return;
+    const textToCopy = `${content.title}\n\n${content.story}`;
     try {
       await navigator.clipboard.writeText(textToCopy);
       toast({ title: "複製成功", description: "故事靈感已複製到剪貼簿！" });
@@ -323,7 +322,6 @@ export default function InspirationGeneratorClient() {
         </Button>
       </div>
 
-      {/* Progress bar for Random All */}
       {isLoading.randomAll && randomAllProgress > 0 && (
         <div className="my-6 max-w-sm mx-auto px-4">
           <Progress value={randomAllProgress} className="w-full h-2.5 rounded-full bg-accent/30 [&>div]:bg-accent" />
@@ -333,7 +331,6 @@ export default function InspirationGeneratorClient() {
         </div>
       )}
       
-      {/* Progress bar for Grammar Refinement */}
       {isLoading.grammar && grammarProgress > 0 && (
         <div className="my-6 max-w-sm mx-auto px-4">
           <Progress value={grammarProgress} className="w-full h-2.5 rounded-full bg-primary/30 [&>div]:bg-primary" />
@@ -343,10 +340,9 @@ export default function InspirationGeneratorClient() {
         </div>
       )}
 
-      {/* Progress indicator for Story Synthesis */}
       {isLoading.synthesis && (
         <div className="my-6 max-w-sm mx-auto px-4">
-          <Progress value={50} className="w-full h-2.5 rounded-full bg-primary/30 [&>div]:bg-primary" /> {/* Using a static value like 50 to indicate ongoing */}
+          <Progress value={50} className="w-full h-2.5 rounded-full bg-primary/30 [&>div]:bg-primary" />
           <p className="text-sm text-muted-foreground text-center mt-2">
             AI 正在合成故事靈感...
           </p>
@@ -360,11 +356,11 @@ export default function InspirationGeneratorClient() {
           <AlertTitle className={`text-lg font-semibold ${consistencyResult.isConsistent ? 'text-green-700 dark:text-green-300' : 'text-amber-700 dark:text-amber-300'}`}>
             {consistencyResult.isConsistent ? "內容一致性良好！" : "一致性建議"}
           </AlertTitle>
-          <AlertDescription className={`text-sm ${consistencyResult.isConsistent ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}`}>
+          <AlertDescription className={`text-sm ${consistencyResult.isConsistent ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'} leading-relaxed`}>
             {consistencyResult.isConsistent 
               ? "目前的5W1H元素組合看起來很棒，前後呼應！" 
               : (
-                <ul className="list-disc list-inside ml-2 space-y-1.5 leading-relaxed">
+                <ul className="list-disc list-inside ml-2 space-y-2 leading-relaxed">
                   {consistencyResult.suggestions.map((suggestion, index) => (
                     <li key={index} className="whitespace-pre-wrap">{suggestion}</li>
                   ))}
@@ -375,22 +371,25 @@ export default function InspirationGeneratorClient() {
         </Alert>
       )}
 
-      {synthesizedStory && (
+      {synthesizedContent && (
         <Card className="mb-8 rounded-lg shadow-xl border border-primary/30 bg-card max-w-3xl mx-auto">
-          <CardHeader className="flex flex-row items-center justify-between p-6 pb-3">
-            <CardTitle className="text-xl font-semibold text-primary">AI 合成故事靈感</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between p-6 pb-2">
+             <div className="flex items-center gap-3">
+              <FileText className="h-6 w-6 text-primary" />
+              <CardTitle className="text-xl font-semibold text-primary">{synthesizedContent.title || 'AI 合成故事靈感'}</CardTitle>
+            </div>
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => handleCopyToClipboard(synthesizedStory)}
+              onClick={() => handleCopyToClipboard(synthesizedContent)}
               aria-label="複製故事靈感"
               className="text-primary hover:text-primary/80"
             >
               <Copy className="h-5 w-5" />
             </Button>
           </CardHeader>
-          <CardContent className="p-6 pt-3">
-            <p className="text-base leading-relaxed text-foreground whitespace-pre-wrap">{synthesizedStory}</p>
+          <CardContent className="p-6 pt-4">
+            <p className="text-base leading-relaxed text-foreground whitespace-pre-wrap">{synthesizedContent.story}</p>
           </CardContent>
         </Card>
       )}
@@ -415,6 +414,3 @@ export default function InspirationGeneratorClient() {
     </div>
   );
 }
-
-
-    
