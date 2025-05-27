@@ -33,15 +33,20 @@ const ScrollBar = React.forwardRef<
     orientation={orientation}
     className={cn(
       "flex touch-none select-none transition-colors",
-      orientation === "vertical" &&
-        "h-full w-2.5 border-l border-l-transparent", // Removed p-[1px]
-      orientation === "horizontal" &&
-        "h-2.5 flex-col border-t border-t-transparent", // Removed p-[1px]
+      // Explicitly set a visible background for the track for debugging
+      "data-[orientation=vertical]:bg-slate-200 dark:data-[orientation=vertical]:bg-slate-700",
+      "data-[orientation=horizontal]:bg-slate-200 dark:data-[orientation=horizontal]:bg-slate-700",
+      orientation === "vertical" && "h-full w-2.5", // Ensure width, removed borders
+      orientation === "horizontal" && "h-2.5 flex-col", // Ensure height, removed borders
       className
     )}
     {...props}
   >
-    <ScrollAreaPrimitive.ScrollAreaThumb className="relative flex-1 rounded-full bg-muted-foreground/50" />
+    <ScrollAreaPrimitive.ScrollAreaThumb
+      className={cn(
+        "relative rounded-full", // Removed flex-1, Radix should handle size
+        "bg-muted-foreground/50" // Ensure thumb is visible
+      )} />
   </ScrollAreaPrimitive.ScrollAreaScrollbar>
 ))
 ScrollBar.displayName = ScrollAreaPrimitive.ScrollAreaScrollbar.displayName
