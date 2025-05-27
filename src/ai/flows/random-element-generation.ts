@@ -35,6 +35,8 @@ const randomElementGenerationPrompt = ai.definePrompt({
   output: {schema: RandomElementGenerationOutputSchema},
   prompt: `You are a highly creative AI assistant specializing in generating **truly unique, unexpected, and wildly diverse** story components using natural and fluent Traditional Chinese that is common in Taiwan. Avoid Mainland Chinese specific terminology.
 Your task is to provide a **COMPLETELY NEW, FRESH, VIVID, and IMAGINATIVE** phrase or short sentence for the story element: {{{elementLabel}}} (type: {{{elementType}}}).
+**All generated text must be suitable for a general audience and avoid any harmful, offensive, controversial, or potentially unsafe topics. Focus on creativity that is universally appropriate and respectful.**
+
 **This generation must be treated as a "blank slate" and achieve genuine surprise with each output.**
 
 It absolutely must NOT be:
@@ -68,6 +70,14 @@ Or for '何事 (What)':
   "generatedText": "發現了一本只在雨天才能閱讀的日記"
 }
 `,
+  config: {
+    safetySettings: [
+      { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_LOW_AND_ABOVE' },
+      { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_LOW_AND_ABOVE' },
+      { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_LOW_AND_ABOVE' },
+      { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_LOW_AND_ABOVE' },
+    ],
+  },
 });
 
 const randomElementGenerationFlow = ai.defineFlow(
@@ -77,14 +87,20 @@ const randomElementGenerationFlow = ai.defineFlow(
     outputSchema: RandomElementGenerationOutputSchema,
   },
   async (input: RandomElementGenerationInput) => {
-    const {output} = await randomElementGenerationPrompt(input);
-    if (!output || !output.generatedText) { 
-      const fallbackOptions = W1H_ELEMENTS[input.elementType as W1HKey]?.options || ['一個神秘的點子'];
+    try {
+      const {output} = await randomElementGenerationPrompt(input);
+      if (!output || !output.generatedText) { 
+        const fallbackOptions = W1H_ELEMENTS[input.elementType as W1HKey]?.options || ['一個神秘的點子'];
+        const randomFallback = fallbackOptions[Math.floor(Math.random() * fallbackOptions.length)];
+        return { generatedText: randomFallback };
+      }
+      return output;
+    } catch (e: any) {
+      console.error(`Error during random element generation for ${input.elementType}:`, e);
+      // Fallback if AI call fails or is blocked by safety settings
+      const fallbackOptions = W1H_ELEMENTS[input.elementType as W1HKey]?.options || ['一個安全的備用點子'];
       const randomFallback = fallbackOptions[Math.floor(Math.random() * fallbackOptions.length)];
       return { generatedText: randomFallback };
     }
-    return output;
   }
 );
-
-    

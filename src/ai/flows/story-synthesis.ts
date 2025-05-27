@@ -45,10 +45,10 @@ Be extremely mindful of generating content that is broadly suitable. **Avoid the
 This includes, but is not limited to:
 - Themes that might be considered unsettling, overly dark, or promoting unhealthy behaviors.
 - Abstract or philosophical explorations of existence, consciousness, death, or spirituality if they could be misinterpreted or flagged by automated systems.
-- Content that could be perceived as depicting or encouraging self-harm, violence (even fantastical if too graphic), or dangerous activities.
+- Content that could be perceived as depicting or encouraging self-harm, violence (even fantastical if too graphic), or **dangerous activities (e.g., accidental ingestion of harmful substances, risky behaviors presented humorously, or glorification of unsafe practices).**
 - Subtle allusions that sensitive automated filters might flag.
 
-Aim for imaginative, engaging, yet **grounded storytelling suitable for a very wide audience.** If a creative idea seems like it might push the boundaries of what is typically acceptable on a general content platform, please err on the side of caution and choose a safer, more universally appropriate narrative direction.
+Aim for imaginative, engaging, yet **grounded storytelling suitable for a very wide audience.** If a creative idea seems like it might push the boundaries of what is typically acceptable on a general content platform, please err on the side of caution and choose a safer, more universally appropriate narrative direction. Prioritize clarity, positive or neutral themes, and widely understandable scenarios.
 
 Given the following 5W1H elements:
 Who: {{{who}}}
@@ -102,7 +102,7 @@ const storySynthesisFlow = ai.defineFlow(
         console.error("Story synthesis response was undefined, malformed, or missing title/story for input:", input);
         return {
           title: '生成標題失敗',
-          story: '無法合成故事或標題，請稍後再試或調整您的5W1H元素。可能是內容觸發了安全限制或AI未能正確回應。',
+          story: '無法合成故事或標題，請稍後再試或調整您的5W1H元素。可能是內容觸發了安全限制或未能正確回應。',
         };
       }
       return {
