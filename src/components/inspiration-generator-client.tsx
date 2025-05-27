@@ -346,7 +346,7 @@ export default function InspirationGeneratorClient() {
     }
   };
 
-  const handleCopyToClipboard = async (content: SynthesizedContent | null) => {
+  const handleCopySynthesizedStory = async (content: SynthesizedContent | null) => {
     if (!content || !content.story) return;
     const textToCopy = `${content.title}\n\n${content.story}`;
     try {
@@ -355,6 +355,21 @@ export default function InspirationGeneratorClient() {
     } catch (err) {
       console.error('Failed to copy text: ', err);
       toast({ variant: "destructive", title: "複製失敗", description: "無法複製內容，請再試一次。" });
+    }
+  };
+
+  const handleCopyConsistencySuggestions = async (suggestions: string[] | undefined) => {
+    if (!suggestions || suggestions.length === 0) {
+        toast({ variant: "default", title: "無內容可複製", description: "目前沒有一致性建議可以複製。" });
+        return;
+    }
+    const textToCopy = suggestions.join('\n\n'); // Separate suggestions with double newlines
+    try {
+      await navigator.clipboard.writeText(textToCopy);
+      toast({ title: "複製成功", description: "一致性建議已複製到剪貼簿！" });
+    } catch (err) {
+      console.error('Failed to copy consistency suggestions: ', err);
+      toast({ variant: "destructive", title: "複製失敗", description: "無法複製建議內容，請再試一次。" });
     }
   };
   
@@ -498,11 +513,26 @@ export default function InspirationGeneratorClient() {
 
       {consistencyResult && (
         <Alert className={`mb-8 rounded-lg shadow-md ${consistencyResult.isConsistent ? 'border-green-500 bg-green-50 dark:bg-green-900/30 dark:border-green-700' : 'border-amber-500 bg-amber-50 dark:bg-amber-900/30 dark:border-amber-700'} max-w-3xl mx-auto`}>
-          <CheckCircle2 className={`h-5 w-5 ${consistencyResult.isConsistent ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}`} />
-          <AlertTitle className={`text-lg font-semibold ${consistencyResult.isConsistent ? 'text-green-700 dark:text-green-300' : 'text-amber-700 dark:text-amber-300'}`}>
-            {consistencyResult.isConsistent ? "內容一致性良好！" : "一致性建議"}
-          </AlertTitle>
-          <AlertDescription className={`text-sm ${consistencyResult.isConsistent ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'} leading-relaxed`}>
+           <div className="flex items-center justify-between w-full">
+              <div className="flex items-center">
+                <CheckCircle2 className={`h-5 w-5 mr-2 ${consistencyResult.isConsistent ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}`} />
+                <AlertTitle className={`text-lg font-semibold ${consistencyResult.isConsistent ? 'text-green-700 dark:text-green-300' : 'text-amber-700 dark:text-amber-300'}`}>
+                  {consistencyResult.isConsistent ? "內容一致性良好！" : "一致性建議"}
+                </AlertTitle>
+              </div>
+              {!consistencyResult.isConsistent && consistencyResult.suggestions.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => handleCopyConsistencySuggestions(consistencyResult?.suggestions)}
+                  aria-label="複製一致性建議"
+                  className="text-muted-foreground hover:text-foreground/80"
+                >
+                  <Copy className="h-5 w-5" />
+                </Button>
+              )}
+            </div>
+          <AlertDescription className={`text-sm ${consistencyResult.isConsistent ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'} leading-relaxed mt-2`}>
             {consistencyResult.isConsistent 
               ? "目前的5W1H元素組合看起來很棒，前後呼應！" 
               : (
@@ -534,7 +564,7 @@ export default function InspirationGeneratorClient() {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => handleCopyToClipboard(synthesizedContent)}
+              onClick={() => handleCopySynthesizedStory(synthesizedContent)}
               aria-label="複製故事靈感"
               className="text-primary hover:text-primary/80"
             >
