@@ -23,7 +23,6 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-// Removed ScrollArea import as it's no longer used in the dialog
 
 type W1HState = {
   [key in W1HKey]: {
@@ -456,7 +455,7 @@ export default function InspirationGeneratorClient() {
 
       {isLoading.consistency && (
         <div className="my-6 max-w-sm mx-auto px-4">
-          <Progress value={50} className="w-full h-2.5 rounded-full bg-primary/30 [&>div]:bg-primary" /> {/* Using indeterminate-like progress */}
+          <Progress value={50} className="w-full h-2.5 rounded-full bg-primary/30 [&>div]:bg-primary" />
           <p className="text-sm text-muted-foreground text-center mt-2">
             正在檢查一致性...
           </p>
@@ -465,7 +464,7 @@ export default function InspirationGeneratorClient() {
 
       {isLoading.synthesis && (
         <div className="my-6 max-w-sm mx-auto px-4">
-          <Progress value={50} className="w-full h-2.5 rounded-full bg-primary/30 [&>div]:bg-primary" /> {/* Using indeterminate-like progress */}
+          <Progress value={50} className="w-full h-2.5 rounded-full bg-primary/30 [&>div]:bg-primary" />
           <p className="text-sm text-muted-foreground text-center mt-2">
             正在合成故事靈感...
           </p>
@@ -474,15 +473,14 @@ export default function InspirationGeneratorClient() {
 
       {isRefinementDialogOpen && (
           <Dialog open={isRefinementDialogOpen} onOpenChange={setIsRefinementDialogOpen}>
-            <DialogContent className="sm:max-w-[600px] flex flex-col"> {/* Removed max-h-[80vh] */}
+            <DialogContent className="sm:max-w-[600px] flex flex-col max-h-[85vh]">
               <DialogHeader>
                 <DialogTitle>語法潤飾結果</DialogTitle>
                 <DialogDescription>
                   以下是本次潤飾所做的變更：
                 </DialogDescription>
               </DialogHeader>
-              {/* Removed ScrollArea, content will flow naturally */}
-              <div className="space-y-4 py-4">
+              <div className="flex-grow min-h-0 overflow-y-auto space-y-4 py-4">
                 {refinementChanges.length > 0 ? (
                   refinementChanges.map((change, index) => (
                     <div key={index} className="p-3 border rounded-md bg-muted/30 dark:bg-muted/20">
