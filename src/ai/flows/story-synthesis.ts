@@ -38,7 +38,7 @@ const storySynthesisPrompt = ai.definePrompt({
   input: {schema: StorySynthesisInputSchema},
   output: {schema: StorySynthesisOutputSchema},
   prompt: `You are a creative AI assistant specializing in weaving compelling short stories or descriptive paragraphs in Standard Traditional Chinese (標準繁體中文), complete with an appropriate title.
-Ensure the language used is formal and suitable for a general Taiwanese audience, avoiding colloquialisms or dialect-specific terms.
+Ensure the language used is formal and suitable for a general Taiwanese audience, avoiding colloquialisms or dialect-specific terms. The content should be safe and appropriate for general audiences, including blog posts.
 
 Given the following 5W1H elements:
 Who: {{{who}}}
@@ -53,6 +53,30 @@ How: {{{how}}}
 
 Output your response as a JSON object matching the schema, including 'title' and 'story' fields.
   `,
+  config: {
+    safetySettings: [
+      {
+        category: 'HARM_CATEGORY_HATE_SPEECH',
+        threshold: 'BLOCK_LOW_AND_ABOVE',
+      },
+      {
+        category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
+        threshold: 'BLOCK_LOW_AND_ABOVE',
+      },
+      {
+        category: 'HARM_CATEGORY_HARASSMENT',
+        threshold: 'BLOCK_LOW_AND_ABOVE',
+      },
+      {
+        category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
+        threshold: 'BLOCK_MEDIUM_AND_ABOVE',
+      },
+      {
+        category: 'HARM_CATEGORY_CIVIC_INTEGRITY',
+        threshold: 'BLOCK_MEDIUM_AND_ABOVE',
+      },
+    ],
+  },
 });
 
 const storySynthesisFlow = ai.defineFlow(
@@ -62,19 +86,34 @@ const storySynthesisFlow = ai.defineFlow(
     outputSchema: StorySynthesisOutputSchema,
   },
   async input => {
-    const {output} = await storySynthesisPrompt(input);
-    if (!output || !output.story) {
-      // Handle the case where the AI response could not be parsed or was empty for the story
-      console.error("Story synthesis AI response was undefined or malformed for input:", input);
+    try {
+      const {output} = await storySynthesisPrompt(input);
+      if (!output || !output.story || !output.title) {
+        // Handle the case where the AI response could not be parsed or was empty for the story/title
+        console.error("Story synthesis AI response was undefined, malformed, or missing title/story for input:", input);
+        return {
+          title: 'AI生成標題失敗',
+          story: 'AI無法合成故事或標題，請稍後再試或調整您的5W1H元素。可能是內容觸發了安全限制。',
+        };
+      }
       return {
-        title: 'AI生成標題失敗',
-        story: 'AI無法合成故事，請稍後再試或調整您的5W1H元素。',
+          title: output.title,
+          story: output.story,
+      };
+    } catch (e: any) {
+      console.error("Error during story synthesis flow:", e);
+      // Check if error is related to safety settings block
+      if (e.message && e.message.includes('blocked by safety settings')) {
+         return {
+          title: '內容生成受阻',
+          story: 'AI合成故事時，部分內容可能因觸發安全限制而被阻擋。請嘗試調整輸入的5W1H元素，或簡化內容後再試。',
+        };
+      }
+      return {
+        title: 'AI合成發生錯誤',
+        story: 'AI合成故事時遇到未預期的問題，請稍後再試。',
       };
     }
-    return {
-        title: output.title || 'AI未提供標題', // Provide a fallback if title is missing but story exists
-        story: output.story,
-    };
   }
 );
 
