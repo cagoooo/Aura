@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Lock, Unlock, Shuffle, Loader2 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { cn } from '@/lib/utils';
 
 interface W1HElementCardProps {
   element: W1HElement;
@@ -18,6 +19,7 @@ interface W1HElementCardProps {
   onToggleLock: () => void;
   useAiRandom?: boolean;
   mainOperationInProgress?: boolean; // Is a global operation like "Random All" or "Grammar" in progress?
+  cardClassName?: string;
 }
 
 export default function W1HElementCard({
@@ -30,6 +32,7 @@ export default function W1HElementCard({
   onToggleLock,
   useAiRandom = false,
   mainOperationInProgress = false,
+  cardClassName,
 }: W1HElementCardProps) {
   const randomButtonText = useAiRandom ? "隨機產生 (AI)" : "隨機產生";
   const randomButtonAriaLabel = `隨機產生${element.label}${useAiRandom ? ' (使用AI)' : ''}`;
@@ -37,7 +40,7 @@ export default function W1HElementCard({
   const isButtonDisabled = isLocked || isLoading || mainOperationInProgress;
 
   return (
-    <Card className="flex flex-col shadow-lg">
+    <Card className={cn("flex flex-col shadow-lg", cardClassName)}>
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-xl font-semibold text-primary">{element.label}</CardTitle>
         <TooltipProvider>
@@ -58,7 +61,7 @@ export default function W1HElementCard({
           value={value}
           onChange={(e) => onValueChange(e.target.value)}
           placeholder={element.placeholder}
-          className="flex-grow min-h-[100px] text-base rounded-md shadow-inner"
+          className="flex-grow min-h-[100px] text-base rounded-md shadow-inner bg-background/50 dark:bg-card" // Ensure textarea background contrasts with card
           disabled={isLocked || mainOperationInProgress}
           aria-label={element.label}
         />
@@ -79,4 +82,3 @@ export default function W1HElementCard({
     </Card>
   );
 }
-

@@ -24,6 +24,16 @@ type W1HState = {
   };
 };
 
+const W1H_CARD_COLORS: Record<W1HKey, string> = {
+  who: 'bg-sky-50 dark:bg-sky-950 border-sky-200 dark:border-sky-800',
+  what: 'bg-emerald-50 dark:bg-emerald-950 border-emerald-200 dark:border-emerald-800',
+  when: 'bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800',
+  where: 'bg-violet-50 dark:bg-violet-950 border-violet-200 dark:border-violet-800',
+  why: 'bg-pink-50 dark:bg-pink-950 border-pink-200 dark:border-pink-800',
+  how: 'bg-teal-50 dark:bg-teal-950 border-teal-200 dark:border-teal-800',
+};
+
+
 const getRandomItem = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 
 export default function InspirationGeneratorClient() {
@@ -205,6 +215,7 @@ export default function InspirationGeneratorClient() {
     } catch (error) {
       console.error("Consistency check error:", error);
       toast({ variant: "destructive", title: "一致性檢查失敗", description: "AI服務發生錯誤，請稍後再試。" });
+      setConsistencyResult({isConsistent: false, suggestions: ['進行一致性檢查時發生錯誤，無法提供建議。']});
     } finally {
       setIsLoading(prev => ({ ...prev, consistency: false }));
     }
@@ -231,6 +242,7 @@ export default function InspirationGeneratorClient() {
      {
       console.error("Story synthesis error:", error);
       toast({ variant: "destructive", title: "內容合成失敗", description: "AI服務發生錯誤，請稍後再試。" });
+       setSynthesizedStory('AI合成故事時遇到問題，請稍後再試。');
     } finally {
       setIsLoading(prev => ({ ...prev, synthesis: false }));
     }
@@ -386,10 +398,10 @@ export default function InspirationGeneratorClient() {
             onToggleLock={() => handleToggleLock(key)}
             useAiRandom={true}
             mainOperationInProgress={anyLoading}
+            cardClassName={W1H_CARD_COLORS[key]}
           />
         ))}
       </div>
     </div>
   );
 }
-
