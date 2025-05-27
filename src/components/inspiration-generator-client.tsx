@@ -340,6 +340,15 @@ export default function InspirationGeneratorClient() {
         </div>
       )}
 
+      {isLoading.consistency && (
+        <div className="my-6 max-w-sm mx-auto px-4">
+          <Progress value={50} className="w-full h-2.5 rounded-full bg-primary/30 [&>div]:bg-primary" />
+          <p className="text-sm text-muted-foreground text-center mt-2">
+            AI 正在檢查一致性...
+          </p>
+        </div>
+      )}
+
       {isLoading.synthesis && (
         <div className="my-6 max-w-sm mx-auto px-4">
           <Progress value={50} className="w-full h-2.5 rounded-full bg-primary/30 [&>div]:bg-primary" />
@@ -360,7 +369,7 @@ export default function InspirationGeneratorClient() {
             {consistencyResult.isConsistent 
               ? "目前的5W1H元素組合看起來很棒，前後呼應！" 
               : (
-                <ul className="list-disc list-inside ml-2 space-y-2 leading-relaxed">
+                <ul className="list-disc list-inside ml-2 space-y-2.5 leading-relaxed">
                   {consistencyResult.suggestions.map((suggestion, index) => (
                     <li key={index} className="whitespace-pre-wrap">{suggestion}</li>
                   ))}
@@ -414,3 +423,4 @@ export default function InspirationGeneratorClient() {
     </div>
   );
 }
+
