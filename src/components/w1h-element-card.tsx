@@ -12,11 +12,12 @@ interface W1HElementCardProps {
   element: W1HElement;
   value: string;
   isLocked: boolean;
-  isLoading: boolean;
+  isLoading: boolean; // Loading state for this specific card's random generation
   onValueChange: (value: string) => void;
   onRandom: () => void;
   onToggleLock: () => void;
-  useAiRandom?: boolean; // Optional prop to change button text
+  useAiRandom?: boolean;
+  mainOperationInProgress?: boolean; // Is a global operation like "Random All" or "Grammar" in progress?
 }
 
 export default function W1HElementCard({
@@ -27,10 +28,13 @@ export default function W1HElementCard({
   onValueChange,
   onRandom,
   onToggleLock,
-  useAiRandom = false, // Default to false
+  useAiRandom = false,
+  mainOperationInProgress = false,
 }: W1HElementCardProps) {
   const randomButtonText = useAiRandom ? "隨機產生 (AI)" : "隨機產生";
   const randomButtonAriaLabel = `隨機產生${element.label}${useAiRandom ? ' (使用AI)' : ''}`;
+
+  const isButtonDisabled = isLocked || isLoading || mainOperationInProgress;
 
   return (
     <Card className="flex flex-col shadow-lg">
@@ -39,7 +43,7 @@ export default function W1HElementCard({
         <TooltipProvider>
           <Tooltip delayDuration={300}>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" onClick={onToggleLock} aria-label={isLocked ? '解鎖' : '鎖定'}>
+              <Button variant="ghost" size="icon" onClick={onToggleLock} aria-label={isLocked ? '解鎖' : '鎖定'} disabled={mainOperationInProgress}>
                 {isLocked ? <Lock className="h-5 w-5 text-accent" /> : <Unlock className="h-5 w-5 text-muted-foreground" />}
               </Button>
             </TooltipTrigger>
@@ -55,12 +59,12 @@ export default function W1HElementCard({
           onChange={(e) => onValueChange(e.target.value)}
           placeholder={element.placeholder}
           className="flex-grow min-h-[100px] text-base rounded-md shadow-inner"
-          disabled={isLocked}
+          disabled={isLocked || mainOperationInProgress}
           aria-label={element.label}
         />
         <Button
           onClick={onRandom}
-          disabled={isLocked || isLoading}
+          disabled={isButtonDisabled}
           className="w-full bg-primary hover:bg-primary/90 text-primary-foreground rounded-md"
           aria-label={randomButtonAriaLabel}
         >
@@ -75,3 +79,4 @@ export default function W1HElementCard({
     </Card>
   );
 }
+

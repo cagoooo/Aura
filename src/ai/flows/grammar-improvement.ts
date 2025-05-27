@@ -1,33 +1,27 @@
+
 'use server';
 
 /**
- * @fileOverview This file contains a Genkit flow for improving the grammar of 5W1H elements in Taiwanese Mandarin.
+ * @fileOverview This file contains a Genkit flow for improving the grammar of a single 5W1H element in Taiwanese Mandarin.
  *
- * - grammarImprovement - A function that takes 5W1H elements and returns grammatically improved versions.
+ * - grammarImprovement - A function that takes a single 5W1H element and returns its grammatically improved version.
  * - GrammarImprovementInput - The input type for the grammarImprovement function.
  * - GrammarImprovementOutput - The return type for the grammarImprovement function.
  */
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+import type { W1HKey } from '@/lib/constants';
 
 const GrammarImprovementInputSchema = z.object({
-  who: z.string().describe('The "Who" element of the 5W1H elements.'),
-  what: z.string().describe('The "What" element of the 5W1H elements.'),
-  when: z.string().describe('The "When" element of the 5W1H elements.'),
-  where: z.string().describe('The "Where" element of the 5W1H elements.'),
-  why: z.string().describe('The "Why" element of the 5W1H elements.'),
-  how: z.string().describe('The "How" element of the 5W1H elements.'),
+  elementType: z.enum(['who', 'what', 'when', 'where', 'why', 'how']).describe('The type of 5W1H element (e.g., "who", "what").'),
+  text: z.string().describe('The current text of the element to be improved.'),
+  elementLabel: z.string().describe('The display label of the element (e.g., "誰 (Who)").'),
 });
 export type GrammarImprovementInput = z.infer<typeof GrammarImprovementInputSchema>;
 
 const GrammarImprovementOutputSchema = z.object({
-  who: z.string().describe('The improved "Who" element.'),
-  what: z.string().describe('The improved "What" element.'),
-  when: z.string().describe('The improved "When" element.'),
-  where: z.string().describe('The improved "Where" element.'),
-  why: z.string().describe('The improved "Why" element.'),
-  how: z.string().describe('The improved "How" element.'),
+  refinedText: z.string().describe('The grammatically improved text for the element, in Traditional Chinese (Taiwanese style).'),
 });
 export type GrammarImprovementOutput = z.infer<typeof GrammarImprovementOutputSchema>;
 
@@ -39,24 +33,17 @@ const grammarImprovementPrompt = ai.definePrompt({
   name: 'grammarImprovementPrompt',
   input: {schema: GrammarImprovementInputSchema},
   output: {schema: GrammarImprovementOutputSchema},
-  prompt: `You are a helpful assistant specialized in improving the grammar and fluency of sentences in Taiwanese Mandarin. You will receive the 5W1H elements and must improve the grammar and fluency of each element so that it is natural for Taiwanese Mandarin speakers.
+  prompt: `You are a helpful assistant specialized in improving the grammar and fluency of sentences in Taiwanese Mandarin.
+You will receive a single story element type (e.g., '誰 (Who)'), its current text.
+Improve the grammar and fluency of this text so that it is natural for Taiwanese Mandarin speakers.
 
-Here are the 5W1H elements:
-Who: {{{who}}}
-What: {{{what}}}
-When: {{{when}}}
-Where: {{{where}}}
-Why: {{{why}}}
-How: {{{how}}}
+Element Label: {{{elementLabel}}}
+Element Type: {{{elementType}}}
+Current Text: {{{text}}}
 
-Return the improved 5W1H elements in the following JSON format:
+Return the improved text in the following JSON format:
 {
-  "who": "improved who",
-  "what": "improved what",
-  "when": "improved when",
-  "where": "improved where",
-  "why": "improved why",
-  "how": "improved how",
+  "refinedText": "improved text for the element"
 }
 `,
 });
@@ -69,6 +56,11 @@ const grammarImprovementFlow = ai.defineFlow(
   },
   async input => {
     const {output} = await grammarImprovementPrompt(input);
-    return output!;
+    if (!output || !output.refinedText) {
+      // Fallback to original text if AI fails or returns empty
+      return { refinedText: input.text };
+    }
+    return output;
   }
 );
+

@@ -48,6 +48,7 @@ export default function InspirationGeneratorClient() {
   });
 
   const [randomAllProgress, setRandomAllProgress] = useState(0);
+  const [grammarProgress, setGrammarProgress] = useState(0);
   const [consistencyResult, setConsistencyResult] = useState<ConsistencyCheckOutput | null>(null);
   const [synthesizedStory, setSynthesizedStory] = useState<string | null>(null);
 
@@ -90,17 +91,18 @@ export default function InspirationGeneratorClient() {
     const newW1hData = { ...w1hData };
     const elementsToProcessKeys = ALL_W1H_KEYS.filter(key => !newW1hData[key].isLocked);
     const totalToProcessCount = elementsToProcessKeys.length;
-    let processedCount = 0;
-    let generatedCount = 0;
-
+    
     if (totalToProcessCount === 0) {
       setIsLoading(prev => ({ ...prev, randomAll: false }));
-      setRandomAllProgress(0);
+      setRandomAllProgress(0); // Reset progress
       toast({ title: "全部隨機", description: "所有項目均已鎖定，未產生新內容。" });
       return;
     }
+    
+    setRandomAllProgress(1); // Start progress if there's work
 
-    setRandomAllProgress(1); // Start progress bar if there's work
+    let processedCount = 0;
+    let generatedCount = 0;
 
     for (const key of elementsToProcessKeys) {
       setIsLoading(prev => ({ ...prev, elements: { ...prev.elements, [key]: true } }));
@@ -124,40 +126,59 @@ export default function InspirationGeneratorClient() {
     }
     setW1hData(newW1hData);
     setIsLoading(prev => ({ ...prev, randomAll: false }));
+    // Do not reset progress to 0 immediately, let it fade with isLoading.randomAll
     if (generatedCount > 0) {
         toast({ title: "全部隨機完畢 (AI)", description: `已為 ${generatedCount} 個未鎖定項目AI產生新內容。` });
+    } else if (totalToProcessCount > 0) {
+        toast({ title: "全部隨機完畢", description: `處理了 ${totalToProcessCount} 個項目，但由於錯誤或AI未返回內容，部分可能使用備用選項。` });
     }
   };
 
   const handleGrammarRefinement = async () => {
     setIsLoading(prev => ({ ...prev, grammar: true }));
+    setGrammarProgress(0);
     setConsistencyResult(null); 
     setSynthesizedStory(null);
-    const currentTexts: GrammarImprovementInput = {
-      who: w1hData.who.text,
-      what: w1hData.what.text,
-      when: w1hData.when.text,
-      where: w1hData.where.text,
-      why: w1hData.why.text,
-      how: w1hData.how.text,
-    };
 
-    try {
-      const result = await grammarImprovement(currentTexts);
-      setW1hData((prev) => {
-        const newState = { ...prev };
-        for (const key of ALL_W1H_KEYS) {
-          newState[key].text = result[key as W1HKey] || prev[key as W1HKey].text;
-        }
-        return newState;
-      });
-      toast({ title: "語法潤飾成功", description: "AI已協助改善內容的語法與流暢度。" });
-    } catch (error) {
-      console.error("Grammar refinement error:", error);
-      toast({ variant: "destructive", title: "語法潤飾失敗", description: "AI服務發生錯誤，請稍後再試。" });
-    } finally {
-      setIsLoading(prev => ({ ...prev, grammar: false }));
+    const elementsToRefine = ALL_W1H_KEYS;
+    const totalToRefine = elementsToRefine.length;
+    let refinedCount = 0;
+
+    if (totalToRefine === 0) {
+        setIsLoading(prev => ({ ...prev, grammar: false }));
+        return;
     }
+    setGrammarProgress(1); // Start progress
+
+    const newW1hData = { ...w1hData };
+
+    for (let i = 0; i < totalToRefine; i++) {
+      const key = elementsToRefine[i];
+      // Skip locked items for grammar refinement as well, or refine them?
+      // For now, let's refine all, as user might have manually edited locked items.
+      // If locked items should be skipped, add: if (newW1hData[key].isLocked) { refinedCount++; setGrammarProgress(...); continue; }
+
+      try {
+        const input: GrammarImprovementInput = {
+          elementType: key,
+          text: newW1hData[key].text,
+          elementLabel: W1H_ELEMENTS[key].label,
+        };
+        const result = await grammarImprovement(input);
+        newW1hData[key] = { ...newW1hData[key], text: result.refinedText };
+      } catch (error) {
+        console.error(`Grammar refinement error for ${key}:`, error);
+        // Keep original text if refinement fails
+        toast({ variant: "destructive", title: `「${W1H_ELEMENTS[key].label}」潤飾失敗`, description: "AI服務發生錯誤，該項目保留原內容。" });
+      } finally {
+        refinedCount++;
+        setGrammarProgress(Math.min((refinedCount / totalToRefine) * 100, 100));
+      }
+    }
+
+    setW1hData(newW1hData);
+    setIsLoading(prev => ({ ...prev, grammar: false }));
+    toast({ title: "語法潤飾成功", description: "AI已協助改善內容的語法與流暢度。" });
   };
 
   const handleConsistencyCheck = async () => {
@@ -228,7 +249,7 @@ export default function InspirationGeneratorClient() {
   
   useEffect(() => {
     const initialLoadPromises = ALL_W1H_KEYS.map(key => {
-      if (!w1hData[key].text) { // Only fetch if text is currently empty
+      if (!w1hData[key].text) { 
         setIsLoading(prev => ({ ...prev, elements: { ...prev.elements, [key]: true } }));
         return randomElementGenerate({
           elementType: key,
@@ -252,17 +273,18 @@ export default function InspirationGeneratorClient() {
           setIsLoading(prev => ({ ...prev, elements: { ...prev.elements, [key]: false } }));
         });
       }
-      return Promise.resolve(); // Return a resolved promise for elements that don't need loading
+      return Promise.resolve();
     });
 
     Promise.all(initialLoadPromises).then(() => {
       // All initial elements are loaded or attempted
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Empty dependency array to run once on mount
+  }, []); 
 
 
   const anyLoading = isLoading.randomAll || isLoading.grammar || isLoading.consistency || isLoading.synthesis;
+  const anyElementLoading = Object.values(isLoading.elements).some(Boolean);
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -271,19 +293,19 @@ export default function InspirationGeneratorClient() {
       </p>
 
       <div className="flex flex-col sm:flex-row gap-4 mb-6 justify-center flex-wrap">
-        <Button onClick={handleRandomAll} disabled={anyLoading} className="bg-accent hover:bg-accent/90 text-accent-foreground flex-1 sm:flex-none rounded-lg shadow-md">
+        <Button onClick={handleRandomAll} disabled={anyLoading || anyElementLoading} className="bg-accent hover:bg-accent/90 text-accent-foreground flex-1 sm:flex-none rounded-lg shadow-md">
           {isLoading.randomAll ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Shuffle className="mr-2 h-5 w-5" />}
           全部隨機 (AI)
         </Button>
-        <Button onClick={handleGrammarRefinement} disabled={anyLoading} className="bg-primary hover:bg-primary/90 text-primary-foreground flex-1 sm:flex-none rounded-lg shadow-md">
+        <Button onClick={handleGrammarRefinement} disabled={anyLoading || anyElementLoading} className="bg-primary hover:bg-primary/90 text-primary-foreground flex-1 sm:flex-none rounded-lg shadow-md">
           {isLoading.grammar ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Sparkles className="mr-2 h-5 w-5" />}
           潤飾語法 (AI)
         </Button>
-        <Button onClick={handleConsistencyCheck} disabled={anyLoading} className="bg-primary hover:bg-primary/90 text-primary-foreground flex-1 sm:flex-none rounded-lg shadow-md">
+        <Button onClick={handleConsistencyCheck} disabled={anyLoading || anyElementLoading} className="bg-primary hover:bg-primary/90 text-primary-foreground flex-1 sm:flex-none rounded-lg shadow-md">
           {isLoading.consistency ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <CheckCircle2 className="mr-2 h-5 w-5" />}
           檢查一致性 (AI)
         </Button>
-        <Button onClick={handleStorySynthesis} disabled={anyLoading} className="bg-primary hover:bg-primary/90 text-primary-foreground flex-1 sm:flex-none rounded-lg shadow-md">
+        <Button onClick={handleStorySynthesis} disabled={anyLoading || anyElementLoading} className="bg-primary hover:bg-primary/90 text-primary-foreground flex-1 sm:flex-none rounded-lg shadow-md">
           {isLoading.synthesis ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <BookText className="mr-2 h-5 w-5" />}
           合成內容 (AI)
         </Button>
@@ -292,21 +314,31 @@ export default function InspirationGeneratorClient() {
       {/* Progress bar for Random All */}
       {isLoading.randomAll && randomAllProgress > 0 && (
         <div className="my-6 max-w-sm mx-auto px-4">
-          <Progress value={randomAllProgress} className="w-full h-2.5 rounded-full" />
+          <Progress value={randomAllProgress} className="w-full h-2.5 rounded-full bg-accent/30 [&>div]:bg-accent" />
           <p className="text-sm text-muted-foreground text-center mt-2">
             AI 正在努力產生靈感... {Math.round(randomAllProgress)}%
+          </p>
+        </div>
+      )}
+      
+      {/* Progress bar for Grammar Refinement */}
+      {isLoading.grammar && grammarProgress > 0 && (
+        <div className="my-6 max-w-sm mx-auto px-4">
+          <Progress value={grammarProgress} className="w-full h-2.5 rounded-full bg-primary/30 [&>div]:bg-primary" />
+          <p className="text-sm text-muted-foreground text-center mt-2">
+            AI 正在潤飾語法... {Math.round(grammarProgress)}%
           </p>
         </div>
       )}
 
 
       {consistencyResult && (
-        <Alert className={`mb-8 rounded-lg shadow-md ${consistencyResult.isConsistent ? 'border-green-500 bg-green-50' : 'border-amber-500 bg-amber-50'} max-w-3xl mx-auto`}>
-          <CheckCircle2 className={`h-5 w-5 ${consistencyResult.isConsistent ? 'text-green-600' : 'text-amber-600'}`} />
-          <AlertTitle className={`font-semibold ${consistencyResult.isConsistent ? 'text-green-700' : 'text-amber-700'}`}>
+        <Alert className={`mb-8 rounded-lg shadow-md ${consistencyResult.isConsistent ? 'border-green-500 bg-green-50 dark:bg-green-900/30 dark:border-green-700' : 'border-amber-500 bg-amber-50 dark:bg-amber-900/30 dark:border-amber-700'} max-w-3xl mx-auto`}>
+          <CheckCircle2 className={`h-5 w-5 ${consistencyResult.isConsistent ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}`} />
+          <AlertTitle className={`font-semibold ${consistencyResult.isConsistent ? 'text-green-700 dark:text-green-300' : 'text-amber-700 dark:text-amber-300'}`}>
             {consistencyResult.isConsistent ? "內容一致性良好！" : "一致性建議"}
           </AlertTitle>
-          <AlertDescription className={consistencyResult.isConsistent ? 'text-green-600' : 'text-amber-600'}>
+          <AlertDescription className={consistencyResult.isConsistent ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}>
             {consistencyResult.isConsistent 
               ? "目前的5W1H元素組合看起來很棒，前後呼應！" 
               : (
@@ -353,6 +385,7 @@ export default function InspirationGeneratorClient() {
             onRandom={() => handleRandomGenerate(key)}
             onToggleLock={() => handleToggleLock(key)}
             useAiRandom={true}
+            mainOperationInProgress={anyLoading}
           />
         ))}
       </div>
