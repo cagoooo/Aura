@@ -482,7 +482,7 @@ export default function InspirationGeneratorClient() {
                   以下是本次潤飾所做的變更：
                 </DialogDescription>
               </DialogHeader>
-              <div className="flex-grow min-h-0 overflow-hidden">
+              <div className="flex-grow min-h-0"> {/* Removed overflow-hidden */}
                 <ScrollArea className="h-full w-full"> 
                   <div className="space-y-4 py-4">
                     {refinementChanges.length > 0 ? (
@@ -505,7 +505,7 @@ export default function InspirationGeneratorClient() {
                   </div>
                 </ScrollArea>
               </div>
-              <DialogFooter className="mt-2 pt-4 border-t"> {/* Added pt-4 and border-t for spacing */}
+              <DialogFooter className="mt-2 pt-4 border-t"> 
                 <Button onClick={() => setIsRefinementDialogOpen(false)}>關閉</Button>
               </DialogFooter>
             </DialogContent>
