@@ -77,7 +77,7 @@ export default function InspirationGeneratorClient() {
     } finally {
       setIsLoading(prev => ({ ...prev, elements: { ...prev.elements, [key]: false } }));
     }
-  }, [w1hData, toast]); // Added toast to dependencies
+  }, [w1hData, toast]);
 
   const handleRandomAll = async () => {
     setIsLoading(prev => ({ ...prev, randomAll: true }));
@@ -256,7 +256,7 @@ export default function InspirationGeneratorClient() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <p className="text-center text-lg text-foreground mb-8">
+      <p className="text-center text-lg text-foreground mb-8 max-w-prose mx-auto">
         點擊「隨機產生 (AI)」來獲得靈感，或使用AI工具「潤飾語法」、「檢查一致性」及「合成內容」來完善您的創意點子！
       </p>
 
@@ -280,7 +280,7 @@ export default function InspirationGeneratorClient() {
       </div>
 
       {consistencyResult && (
-        <Alert className={`mb-8 rounded-lg shadow-md ${consistencyResult.isConsistent ? 'border-green-500 bg-green-50' : 'border-amber-500 bg-amber-50'}`}>
+        <Alert className={`mb-8 rounded-lg shadow-md ${consistencyResult.isConsistent ? 'border-green-500 bg-green-50' : 'border-amber-500 bg-amber-50'} max-w-3xl mx-auto`}>
           <CheckCircle2 className={`h-5 w-5 ${consistencyResult.isConsistent ? 'text-green-600' : 'text-amber-600'}`} />
           <AlertTitle className={`font-semibold ${consistencyResult.isConsistent ? 'text-green-700' : 'text-amber-700'}`}>
             {consistencyResult.isConsistent ? "內容一致性良好！" : "一致性建議"}
@@ -301,7 +301,7 @@ export default function InspirationGeneratorClient() {
       )}
 
       {synthesizedStory && (
-        <Card className="mb-8 rounded-lg shadow-md">
+        <Card className="mb-8 rounded-lg shadow-md max-w-3xl mx-auto">
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-xl font-semibold text-primary">AI 合成故事靈感</CardTitle>
             <Button
