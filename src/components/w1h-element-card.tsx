@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { W1HElement } from '@/lib/constants';
@@ -15,6 +16,7 @@ interface W1HElementCardProps {
   onValueChange: (value: string) => void;
   onRandom: () => void;
   onToggleLock: () => void;
+  useAiRandom?: boolean; // Optional prop to change button text
 }
 
 export default function W1HElementCard({
@@ -25,7 +27,11 @@ export default function W1HElementCard({
   onValueChange,
   onRandom,
   onToggleLock,
+  useAiRandom = false, // Default to false
 }: W1HElementCardProps) {
+  const randomButtonText = useAiRandom ? "隨機產生 (AI)" : "隨機產生";
+  const randomButtonAriaLabel = `隨機產生${element.label}${useAiRandom ? ' (使用AI)' : ''}`;
+
   return (
     <Card className="flex flex-col shadow-lg">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -56,14 +62,14 @@ export default function W1HElementCard({
           onClick={onRandom}
           disabled={isLocked || isLoading}
           className="w-full bg-primary hover:bg-primary/90 text-primary-foreground rounded-md"
-          aria-label={`隨機產生${element.label}`}
+          aria-label={randomButtonAriaLabel}
         >
           {isLoading ? (
             <Loader2 className="h-5 w-5 animate-spin" />
           ) : (
             <Shuffle className="h-5 w-5 mr-2" />
           )}
-          隨機產生
+          {randomButtonText}
         </Button>
       </CardContent>
     </Card>
