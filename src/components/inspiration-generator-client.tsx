@@ -346,7 +346,7 @@ export default function InspirationGeneratorClient() {
       {/* Progress indicator for Story Synthesis */}
       {isLoading.synthesis && (
         <div className="my-6 max-w-sm mx-auto px-4">
-          <Progress value={50} className="w-full h-2.5 rounded-full bg-primary/30 [&>div]:bg-primary" />
+          <Progress value={50} className="w-full h-2.5 rounded-full bg-primary/30 [&>div]:bg-primary" /> {/* Using a static value like 50 to indicate ongoing */}
           <p className="text-sm text-muted-foreground text-center mt-2">
             AI 正在合成故事靈感...
           </p>
@@ -376,8 +376,8 @@ export default function InspirationGeneratorClient() {
       )}
 
       {synthesizedStory && (
-        <Card className="mb-8 rounded-lg shadow-md max-w-3xl mx-auto">
-          <CardHeader className="flex flex-row items-center justify-between">
+        <Card className="mb-8 rounded-lg shadow-xl border border-primary/30 bg-card max-w-3xl mx-auto">
+          <CardHeader className="flex flex-row items-center justify-between p-6 pb-3">
             <CardTitle className="text-xl font-semibold text-primary">AI 合成故事靈感</CardTitle>
             <Button
               variant="ghost"
@@ -389,8 +389,8 @@ export default function InspirationGeneratorClient() {
               <Copy className="h-5 w-5" />
             </Button>
           </CardHeader>
-          <CardContent>
-            <p className="text-foreground whitespace-pre-wrap">{synthesizedStory}</p>
+          <CardContent className="p-6 pt-3">
+            <p className="text-base leading-relaxed text-foreground whitespace-pre-wrap">{synthesizedStory}</p>
           </CardContent>
         </Card>
       )}
@@ -416,3 +416,5 @@ export default function InspirationGeneratorClient() {
   );
 }
 
+
+    
