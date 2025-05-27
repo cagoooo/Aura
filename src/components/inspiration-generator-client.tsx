@@ -467,7 +467,7 @@ export default function InspirationGeneratorClient() {
                   以下是本次潤飾所做的變更：
                 </DialogDescription>
               </DialogHeader>
-              <ScrollArea className="flex-grow"> 
+              <ScrollArea className="flex-grow min-h-0"> 
                 <div className="space-y-4 py-4">
                   {refinementChanges.length > 0 ? (
                     refinementChanges.map((change, index) => (
