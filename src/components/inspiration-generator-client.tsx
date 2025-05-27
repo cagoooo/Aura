@@ -23,6 +23,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import confetti from 'canvas-confetti';
 
 type W1HState = {
   [key in W1HKey]: {
@@ -331,13 +332,34 @@ export default function InspirationGeneratorClient() {
       how: w1hData.how.text,
     };
 
+    const errorTitles = ['生成標題失敗', '內容生成受阻', '合成發生錯誤'];
+
     try {
       const result = await storySynthesis(currentTexts);
       setSynthesizedContent(result);
-      toast({ title: "內容合成成功", description: "已根據您的5W1H元素生成了一段故事靈感！" });
+
+      if (result && result.story && result.title && !errorTitles.includes(result.title)) {
+         confetti({
+          particleCount: 300,
+          spread: 120,
+          origin: { x: 0.5, y: 0.5 }, // Center of the screen
+          ticks: 400,
+          gravity: 0.7,
+          startVelocity: 45,
+          scalar: 1.2, // Make particles larger
+          zIndex: 10001, // Ensure it's on top
+          colors: ['#FFC107', '#E91E63', '#2196F3', '#4CAF50', '#FF5722', '#9C27B0', '#00BCD4']
+        });
+        toast({ title: "內容合成成功", description: "已根據您的5W1H元素生成了一段故事靈感！" });
+      } else {
+        // This case handles if storySynthesis returns an error structure but doesn't throw
+        toast({ variant: "destructive", title: result.title || "內容合成失敗", description: result.story || "服務發生錯誤，請稍後再試。" });
+      }
     } catch (error) {
       console.error("Story synthesis error:", error);
+      // This catch block handles thrown errors from the flow
       toast({ variant: "destructive", title: "內容合成失敗", description: "服務發生錯誤，請稍後再試。" });
+      // Set a fallback content for display, even if it's an error message
       setSynthesizedContent({ title: '合成標題失敗', story: '合成故事時遇到問題，請稍後再試。'});
     } finally {
       setIsLoading(prev => ({ ...prev, synthesis: false }));
@@ -471,16 +493,16 @@ export default function InspirationGeneratorClient() {
         </div>
       )}
 
-      {isRefinementDialogOpen && (
-          <Dialog open={isRefinementDialogOpen} onOpenChange={setIsRefinementDialogOpen}>
-            <DialogContent className="sm:max-w-[600px] flex flex-col max-h-[85vh]">
-              <DialogHeader>
-                <DialogTitle>語法潤飾結果</DialogTitle>
-                <DialogDescription>
-                  以下是本次潤飾所做的變更：
-                </DialogDescription>
-              </DialogHeader>
-              <div className="flex-grow min-h-0 overflow-y-auto space-y-4 py-4">
+     {isRefinementDialogOpen && (
+        <Dialog open={isRefinementDialogOpen} onOpenChange={setIsRefinementDialogOpen}>
+          <DialogContent className="sm:max-w-[600px] max-h-[85vh] flex flex-col">
+            <DialogHeader>
+              <DialogTitle>語法潤飾結果</DialogTitle>
+              <DialogDescription>
+                以下是本次潤飾所做的變更：
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex-grow min-h-0 overflow-y-auto space-y-4 py-4">
                 {refinementChanges.length > 0 ? (
                   refinementChanges.map((change, index) => (
                     <div key={index} className="p-3 border rounded-md bg-muted/30 dark:bg-muted/20">
@@ -499,12 +521,12 @@ export default function InspirationGeneratorClient() {
                   <p className="text-center text-muted-foreground py-4">所有項目的語法均已相當通順，無需調整。</p>
                 )}
               </div>
-              <DialogFooter className="mt-2 pt-4 border-t"> 
-                <Button onClick={() => setIsRefinementDialogOpen(false)}>關閉</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        )}
+            <DialogFooter className="mt-2 pt-4 border-t"> 
+              <Button onClick={() => setIsRefinementDialogOpen(false)}>關閉</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
 
 
       {consistencyResult && (
@@ -595,3 +617,4 @@ export default function InspirationGeneratorClient() {
     
 
     
+
