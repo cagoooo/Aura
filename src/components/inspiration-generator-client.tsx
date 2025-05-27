@@ -343,6 +343,16 @@ export default function InspirationGeneratorClient() {
         </div>
       )}
 
+      {/* Progress indicator for Story Synthesis */}
+      {isLoading.synthesis && (
+        <div className="my-6 max-w-sm mx-auto px-4">
+          <Progress value={50} className="w-full h-2.5 rounded-full bg-primary/30 [&>div]:bg-primary" />
+          <p className="text-sm text-muted-foreground text-center mt-2">
+            AI 正在合成故事靈感...
+          </p>
+        </div>
+      )}
+
 
       {consistencyResult && (
         <Alert className={`mb-8 rounded-lg shadow-md ${consistencyResult.isConsistent ? 'border-green-500 bg-green-50 dark:bg-green-900/30 dark:border-green-700' : 'border-amber-500 bg-amber-50 dark:bg-amber-900/30 dark:border-amber-700'} max-w-3xl mx-auto`}>
@@ -356,7 +366,7 @@ export default function InspirationGeneratorClient() {
               : (
                 <ul className="list-disc list-inside ml-2 space-y-1.5 leading-relaxed">
                   {consistencyResult.suggestions.map((suggestion, index) => (
-                    <li key={index}>{suggestion}</li>
+                    <li key={index} className="whitespace-pre-wrap">{suggestion}</li>
                   ))}
                 </ul>
               )
@@ -405,3 +415,4 @@ export default function InspirationGeneratorClient() {
     </div>
   );
 }
+
