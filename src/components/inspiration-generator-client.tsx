@@ -482,29 +482,27 @@ export default function InspirationGeneratorClient() {
                   以下是本次潤飾所做的變更：
                 </DialogDescription>
               </DialogHeader>
-              <div className="flex-grow min-h-0"> {/* Removed overflow-hidden */}
-                <ScrollArea className="h-full w-full"> 
-                  <div className="space-y-4 py-4">
-                    {refinementChanges.length > 0 ? (
-                      refinementChanges.map((change, index) => (
-                        <div key={index} className="p-3 border rounded-md bg-muted/30 dark:bg-muted/20">
-                          <h4 className="font-semibold text-primary mb-2">{change.label}</h4>
-                          <div className="mb-2">
-                            <p className="text-xs text-muted-foreground mb-0.5">原文：</p>
-                            <p className="text-sm p-2 bg-background/70 dark:bg-background/50 rounded border border-dashed border-input whitespace-pre-wrap">{change.original.trim() || "（無內容）"}</p>
-                          </div>
-                          <div>
-                            <p className="text-xs text-green-600 dark:text-green-500 mb-0.5">潤飾後：</p>
-                            <p className="text-sm p-2 bg-background/70 dark:bg-background/50 rounded border border-green-500/50 whitespace-pre-wrap">{change.refined.trim() || "（無內容）"}</p>
-                          </div>
+              <ScrollArea className="flex-grow min-h-0 w-full">
+                <div className="space-y-4 py-4">
+                  {refinementChanges.length > 0 ? (
+                    refinementChanges.map((change, index) => (
+                      <div key={index} className="p-3 border rounded-md bg-muted/30 dark:bg-muted/20">
+                        <h4 className="font-semibold text-primary mb-2">{change.label}</h4>
+                        <div className="mb-2">
+                          <p className="text-xs text-muted-foreground mb-0.5">原文：</p>
+                          <p className="text-sm p-2 bg-background/70 dark:bg-background/50 rounded border border-dashed border-input whitespace-pre-wrap">{change.original.trim() || "（無內容）"}</p>
                         </div>
-                      ))
-                    ) : (
-                      <p className="text-center text-muted-foreground py-4">所有項目的語法均已相當通順，無需調整。</p>
-                    )}
-                  </div>
-                </ScrollArea>
-              </div>
+                        <div>
+                          <p className="text-xs text-green-600 dark:text-green-500 mb-0.5">潤飾後：</p>
+                          <p className="text-sm p-2 bg-background/70 dark:bg-background/50 rounded border border-green-500/50 whitespace-pre-wrap">{change.refined.trim() || "（無內容）"}</p>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-center text-muted-foreground py-4">所有項目的語法均已相當通順，無需調整。</p>
+                  )}
+                </div>
+              </ScrollArea>
               <DialogFooter className="mt-2 pt-4 border-t"> 
                 <Button onClick={() => setIsRefinementDialogOpen(false)}>關閉</Button>
               </DialogFooter>
@@ -599,3 +597,4 @@ export default function InspirationGeneratorClient() {
   );
 }
     
+
