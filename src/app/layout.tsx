@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: '靈感發射器',
-  description: '隨時隨地，點燃你的創意火花！',
+  title: '5W1H 靈感發射器 🚀',
+  description: '隨時隨地，點燃你的創意火花！使用5W1H靈感發射器，輕鬆產生故事、劇本、文案的絕妙點子。🚀',
 };
 
 export default function RootLayout({
