@@ -25,7 +25,7 @@ const ConsistencyCheckInputSchema = z.object({
 export type ConsistencyCheckInput = z.infer<typeof ConsistencyCheckInputSchema>;
 
 const ConsistencyCheckOutputSchema = z.object({
-  suggestions: z.array(z.string()).describe('Suggestions for adjusting the 5W1H elements to improve consistency. These suggestions should be in Traditional Chinese (繁體中文). Each string in the array should represent a distinct suggestion or point of feedback.'),
+  suggestions: z.array(z.string()).describe('Suggestions for adjusting the 5W1H elements to improve consistency. These suggestions should be in natural and fluent Traditional Chinese (繁體中文) commonly used in Taiwan. Each string in the array should represent a distinct suggestion or point of feedback.'),
   isConsistent: z.boolean().describe('Whether the 5W1H elements are consistent.'),
 });
 
@@ -40,7 +40,7 @@ const consistencyCheckPrompt = ai.definePrompt({
   input: {schema: ConsistencyCheckInputSchema},
   output: {schema: ConsistencyCheckOutputSchema},
   prompt: `You are an expert story editor AI that analyzes the consistency of a story concept described by the 5W1H elements (Who, What, When, Where, Why, How).
-All your output, including any suggestions, must be in Traditional Chinese (繁體中文) and tailored to Taiwanese language customs.
+All your output, including any suggestions, must be in natural and fluent Traditional Chinese (繁體中文) commonly used in Taiwan, avoiding Mainland Chinese specific terminology. Your suggestions should be clear, easy to understand, and directly applicable for a user in Taiwan.
 
 Given the following 5W1H elements:
 Who: {{{who}}}
@@ -54,7 +54,7 @@ Analyze these elements for narrative coherence and logical consistency.
 
 If they are fundamentally consistent and form a plausible (even if fantastical) basis for a story, set 'isConsistent' to true and provide an empty array for 'suggestions'.
 
-If they are not consistent, or if the combination presents clear narrative challenges or plot holes, set 'isConsistent' to false. Then, provide **constructive, specific, and actionable suggestions** in Traditional Chinese (繁體中文). Your suggestions should adhere to the following formatting guidelines to ensure clarity in the UI:
+If they are not consistent, or if the combination presents clear narrative challenges or plot holes, set 'isConsistent' to false. Then, provide **constructive, specific, and actionable suggestions** in natural and fluent Traditional Chinese (繁體中文) commonly used in Taiwan. Your suggestions should adhere to the following formatting guidelines to ensure clarity in the UI:
 
 1.  **Granular Suggestions**: For each distinct problem you identify (e.g., an issue with 'Why', a separate issue with 'Where', or a conflict between 'When' and 'What'), formulate it as a **separate string** in the 'suggestions' array. This means if you have three major points of feedback, the 'suggestions' array should contain three strings.
 
@@ -89,8 +89,7 @@ const consistencyCheckFlow = ai.defineFlow(
   },
   async input => {
     const {output} = await consistencyCheckPrompt(input);
-    if (!output || !output.suggestions) { // Check for suggestions array specifically
-      // Handle the case where the AI response could not be parsed or was empty/malformed
+    if (!output || !output.suggestions) { 
       console.error("Consistency check AI response was undefined, malformed, or missing suggestions for input:", input);
       return {
         isConsistent: false,

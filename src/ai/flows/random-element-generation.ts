@@ -21,7 +21,7 @@ const RandomElementGenerationInputSchema = z.object({
 export type RandomElementGenerationInput = z.infer<typeof RandomElementGenerationInputSchema>;
 
 const RandomElementGenerationOutputSchema = z.object({
-  generatedText: z.string().describe('The AI-generated creative suggestion for the element, in Traditional Chinese (Taiwanese style). This suggestion must be completely new, fresh, and distinct from any previous examples or common themes.'),
+  generatedText: z.string().describe('The AI-generated creative suggestion for the element, in natural and fluent Traditional Chinese commonly used in Taiwan. This suggestion must be completely new, fresh, and distinct from any previous examples or common themes, and avoid Mainland Chinese specific terminology.'),
 });
 export type RandomElementGenerationOutput = z.infer<typeof RandomElementGenerationOutputSchema>;
 
@@ -33,18 +33,18 @@ const randomElementGenerationPrompt = ai.definePrompt({
   name: 'randomElementGenerationPrompt',
   input: {schema: RandomElementGenerationInputSchema},
   output: {schema: RandomElementGenerationOutputSchema},
-  prompt: `You are a highly creative AI assistant specializing in generating unique and inspiring story components in Traditional Chinese (Taiwanese style).
+  prompt: `You are a highly creative AI assistant specializing in generating unique and inspiring story components using natural and fluent Traditional Chinese that is common in Taiwan. Avoid Mainland Chinese specific terminology.
 Your task is to provide a **completely new, fresh, vivid, and imaginative** phrase or short sentence for the story element: {{{elementLabel}}} (type: {{{elementType}}}).
 **This generation must be treated as a "blank slate". It absolutely must NOT be an improvement, variation, or modification of any previous text, examples provided for this element, or common tropes you might typically consider. Your goal is to achieve true randomness and surprise with each generation.**
 
 Please ensure your suggestion is:
-- In Traditional Chinese, using language and cultural nuances appropriate for Taiwan.
+- In Traditional Chinese, using natural and fluent language commonly understood and used in Taiwan. Avoid Mainland Chinese specific terminology.
 - Concise and directly usable as a story component.
 - **Fundamentally different, distinct, and entirely unrelated to** the following examples (these are only provided as context of what NOT to generate or be similar to):
   {{#each existingOptions}}
   - {{{this}}}
   {{/each}}
-- **Strive for a wide variety of themes and concepts. Avoid overly common tropes or generating multiple elements that are thematically very similar (e.g., repeatedly focusing on specific deities, folklore, or narrow cultural references like "阿嬤" or "媽祖" unless approached with extreme originality). Your goal is to explore diverse possibilities such as science fiction, everyday life, abstract concepts, historical scenarios, personal dilemmas, humorous situations, philosophical questions, surreal events, etc.**
+- **Strive for a wide variety of themes and concepts. Avoid overly common tropes or generating multiple elements that are thematically very similar (e.g., avoid repeatedly focusing on specific deities, folklore, or narrow cultural references like "阿嬤" or "媽祖" unless approached with extreme originality and as part of a diverse set of ideas). Your goal is to explore diverse possibilities such as science fiction, everyday life, abstract concepts, historical scenarios, personal dilemmas, humorous situations, philosophical questions, surreal events, etc.**
 
 Think completely outside the box and offer something **truly original and entirely independent of ANY prior content, examples for this specific element, or patterns you might have fallen into.** Your goal is a "fresh start" for this idea, exploring diverse and unexpected directions. Ensure each generation is **genuinely random** and not merely a permutation of a recurring theme. Each output should feel like a brand new, surprising idea.
 
@@ -68,8 +68,7 @@ const randomElementGenerationFlow = ai.defineFlow(
   },
   async (input: RandomElementGenerationInput) => {
     const {output} = await randomElementGenerationPrompt(input);
-    if (!output || !output.generatedText) { // Check if generatedText is empty too
-      // Fallback to a random existing option if AI fails or returns nothing or empty string
+    if (!output || !output.generatedText) { 
       const fallbackOptions = W1H_ELEMENTS[input.elementType as W1HKey]?.options || ['一個神秘的點子'];
       const randomFallback = fallbackOptions[Math.floor(Math.random() * fallbackOptions.length)];
       return { generatedText: randomFallback };

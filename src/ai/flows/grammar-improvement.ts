@@ -21,7 +21,7 @@ const GrammarImprovementInputSchema = z.object({
 export type GrammarImprovementInput = z.infer<typeof GrammarImprovementInputSchema>;
 
 const GrammarImprovementOutputSchema = z.object({
-  refinedText: z.string().describe('The grammatically improved text for the element, in Traditional Chinese (Taiwanese style).'),
+  refinedText: z.string().describe('The grammatically improved text for the element, in Traditional Chinese, using natural phrasing for Taiwanese users and avoiding Mainland Chinese specific terms.'),
 });
 export type GrammarImprovementOutput = z.infer<typeof GrammarImprovementOutputSchema>;
 
@@ -33,9 +33,9 @@ const grammarImprovementPrompt = ai.definePrompt({
   name: 'grammarImprovementPrompt',
   input: {schema: GrammarImprovementInputSchema},
   output: {schema: GrammarImprovementOutputSchema},
-  prompt: `You are a helpful assistant specialized in improving the grammar and fluency of sentences in Taiwanese Mandarin.
+  prompt: `You are a helpful assistant specialized in improving the grammar and fluency of sentences in Traditional Chinese for users in Taiwan.
 You will receive a single story element type (e.g., '誰 (Who)'), its current text.
-Improve the grammar and fluency of this text so that it is natural for Taiwanese Mandarin speakers.
+Improve the grammar and fluency of this text so that it is natural for Taiwanese Mandarin speakers. Ensure the refined text uses common Traditional Chinese phrasing found in Taiwan and avoids Mainland Chinese colloquialisms or specific terminology.
 
 Element Label: {{{elementLabel}}}
 Element Type: {{{elementType}}}
