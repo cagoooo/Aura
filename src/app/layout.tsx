@@ -4,7 +4,7 @@ import {Geist, Geist_Mono} from 'next/font/google';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import AppHeader from '@/components/app-header';
-import AppFooter from '@/components/app-footer'; // Import the new footer
+import AppFooter from '@/components/app-footer';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -27,11 +27,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="zh-TW" className="flex flex-col min-h-screen"> {/* Ensure html takes full height and enables flex column layout */}
-      <body className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased flex flex-col flex-grow`}> {/* Ensure body takes full height and enables flex column layout */}
+    <html lang="zh-TW" className="flex flex-col min-h-screen">
+      <body className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased flex flex-col flex-grow`}>
         <AppHeader />
-        <main className="flex-grow">{children}</main> {/* Make main content grow to fill available space */}
-        <AppFooter /> {/* Add the footer here */}
+        <main className="flex-grow">{children}</main>
+        <AppFooter />
         <Toaster />
       </body>
     </html>
