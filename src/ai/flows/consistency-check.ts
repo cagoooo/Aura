@@ -1,3 +1,4 @@
+
 // consistency-check.ts
 'use server';
 
@@ -24,7 +25,7 @@ const ConsistencyCheckInputSchema = z.object({
 export type ConsistencyCheckInput = z.infer<typeof ConsistencyCheckInputSchema>;
 
 const ConsistencyCheckOutputSchema = z.object({
-  suggestions: z.array(z.string()).describe('Suggestions for adjusting the 5W1H elements to improve consistency.'),
+  suggestions: z.array(z.string()).describe('Suggestions for adjusting the 5W1H elements to improve consistency. These suggestions should be in Traditional Chinese (繁體中文).'),
   isConsistent: z.boolean().describe('Whether the 5W1H elements are consistent.'),
 });
 
@@ -39,18 +40,20 @@ const consistencyCheckPrompt = ai.definePrompt({
   input: {schema: ConsistencyCheckInputSchema},
   output: {schema: ConsistencyCheckOutputSchema},
   prompt: `You are an AI assistant that analyzes the consistency of a story described by the 5W1H elements (Who, What, When, Where, Why, How).
+All your output, including any suggestions, must be in Traditional Chinese (繁體中文) and tailored to Taiwanese language customs.
 
-  Given the following 5W1H elements:
+Given the following 5W1H elements:
+Who: {{{who}}}
+What: {{{what}}}
+When: {{{when}}}
+Where: {{{where}}}
+Why: {{{why}}}
+How: {{{how}}}
 
-  Who: {{{who}}}
-  What: {{{what}}}
-  When: {{{when}}}
-  Where: {{{where}}}
-  Why: {{{why}}}
-  How: {{{how}}}
-
-  Analyze these elements and provide suggestions for adjusting them to ensure the overall narrative is consistent and makes sense. If the elements are consistent, return an empty array for suggestions and isConsistent to be true. Otherwise isConsistent should be false and suggestions should be populated.
-  Format your output as a JSON object matching the schema.
+Analyze these elements.
+If they are consistent, set 'isConsistent' to true and provide an empty array for 'suggestions'.
+If they are not consistent, set 'isConsistent' to false and provide specific 'suggestions' in Traditional Chinese (繁體中文) for adjusting them to ensure the overall narrative is consistent and makes sense.
+Format your output as a JSON object matching the schema.
   `,
 });
 
@@ -65,3 +68,4 @@ const consistencyCheckFlow = ai.defineFlow(
     return output!;
   }
 );
+
