@@ -189,10 +189,9 @@ export default function InspirationGeneratorClient() {
         const input: RandomElementGenerationInput = {
           elementType: key,
           elementLabel: W1H_ELEMENTS[key].label,
-          existingOptions: W1H_ELEMENTS[key].options, // Pass existing options for variety
+          existingOptions: W1H_ELEMENTS[key].options, 
         };
         const result = await randomElementGenerate(input);
-        // Update state for this specific key immediately to trigger re-render and confetti
         setW1hData((prevData) => ({
           ...prevData,
           [key]: { ...prevData[key], text: result.generatedText },
@@ -200,7 +199,6 @@ export default function InspirationGeneratorClient() {
         generatedCount++;
       } catch (error) {
         console.error(`Random generation error for ${key} during random all:`, error);
-        // Update state with fallback immediately
         setW1hData((prevData) => ({
           ...prevData,
           [key]: { ...prevData[key], text: getRandomItem(W1H_ELEMENTS[key].options) },
@@ -208,9 +206,6 @@ export default function InspirationGeneratorClient() {
       } finally {
          processedCount++;
          setRandomAllProgress(Math.min((processedCount / totalToProcessCount) * 100, 100));
-         // Set loading for the specific element to false AFTER its state update has likely processed
-         // Use a small timeout to ensure confetti can trigger if the state update causes a quick re-render
-         // This might not be strictly necessary if React batches updates efficiently, but can help ensure isLoading toggles correctly for confetti
          await new Promise(resolve => setTimeout(resolve, 0)); 
          setIsLoading(prev => ({ ...prev, elements: { ...prev.elements, [key]: false } }));
       }
@@ -231,8 +226,8 @@ export default function InspirationGeneratorClient() {
     setSynthesizedContent(null);
     setRefinementChanges([]);
 
-    const originalW1hData = JSON.parse(JSON.stringify(w1hData)) as W1HState; // Deep copy
-    const newW1hData = JSON.parse(JSON.stringify(w1hData)) as W1HState; // Deep copy for modifications
+    const originalW1hData = JSON.parse(JSON.stringify(w1hData)) as W1HState; 
+    const newW1hData = JSON.parse(JSON.stringify(w1hData)) as W1HState; 
     
     const elementsToRefine = ALL_W1H_KEYS;
     const totalToRefine = elementsToRefine.length;
@@ -268,15 +263,13 @@ export default function InspirationGeneratorClient() {
         setGrammarProgress(Math.min((processedCount / totalToRefine) * 100, 100));
       }
     }
-    setW1hData(newW1hData); // Update the main state with all refinements
+    setW1hData(newW1hData); 
 
-    // Calculate changes for the dialog
     const changesMade: RefinementChange[] = [];
     let actualModificationsCount = 0;
     for (const key of ALL_W1H_KEYS) {
       const originalTextForDialog = originalW1hData[key as W1HKey].text;
       const refinedTextForDialog = newW1hData[key as W1HKey].text;
-      // Compare trimmed versions to avoid flagging whitespace-only changes
       if (originalTextForDialog.trim() !== refinedTextForDialog.trim() && refinedTextForDialog.trim() !== '') { 
         changesMade.push({
           label: W1H_ELEMENTS[key as W1HKey].label,
@@ -284,20 +277,20 @@ export default function InspirationGeneratorClient() {
           refined: refinedTextForDialog,
         });
         actualModificationsCount++;
-      } else if (originalTextForDialog.trim() && refinedTextForDialog.trim() === '') { // Original had text, refined is empty
+      } else if (originalTextForDialog.trim() && refinedTextForDialog.trim() === '') { 
          changesMade.push({
           label: W1H_ELEMENTS[key as W1HKey].label,
           original: originalTextForDialog,
-          refined: refinedTextForDialog, // Will show as empty
+          refined: refinedTextForDialog, 
         });
-        actualModificationsCount++; // Still count as a change if text was removed
+        actualModificationsCount++; 
       }
     }
     setRefinementChanges(changesMade);
     setIsLoading(prev => ({ ...prev, grammar: false }));
     
     if (actualModificationsCount > 0) {
-      setIsRefinementDialogOpen(true); // Open the dialog
+      setIsRefinementDialogOpen(true); 
       toast({ title: "語法潤飾完畢", description: `已為 ${actualModificationsCount} 個項目提升語法與流暢度。請查看詳細變更。` });
     } else if (totalToRefine > 0 && ALL_W1H_KEYS.some(k => originalW1hData[k].text.trim() !== '')) { 
       toast({ title: "語法檢查完畢", description: "所有項目的語法均已相當通順，無需調整。" });
@@ -357,26 +350,23 @@ export default function InspirationGeneratorClient() {
 
       if (result && result.story && result.title && !errorTitles.includes(result.title)) {
          confetti({
-          particleCount: 300, // More particles
-          spread: 120,        // Wider spread
-          origin: { x: 0.5, y: 0.5 }, // Center of the screen
-          ticks: 400,         // Longer duration
+          particleCount: 300, 
+          spread: 120,        
+          origin: { x: 0.5, y: 0.5 }, 
+          ticks: 400,         
           gravity: 0.7,
           startVelocity: 45,
-          scalar: 1.2,        // Larger particles
-          zIndex: 10001,       // Ensure it's on top
-          colors: ['#FFC107', '#E91E63', '#2196F3', '#4CAF50', '#FF5722', '#9C27B0', '#00BCD4'] // Vibrant colors
+          scalar: 1.2,        
+          zIndex: 10001,       
+          colors: ['#FFC107', '#E91E63', '#2196F3', '#4CAF50', '#FF5722', '#9C27B0', '#00BCD4'] 
         });
         toast({ title: "內容合成成功", description: "已根據您的5W1H元素生成了一段故事靈感！" });
       } else {
-        // This case handles if storySynthesis returns an error structure but doesn't throw
         toast({ variant: "destructive", title: result.title || "內容合成失敗", description: result.story || "服務發生錯誤，請稍後再試。" });
       }
     } catch (error) {
       console.error("Story synthesis error:", error);
-      // This catch block handles thrown errors from the flow
       toast({ variant: "destructive", title: "內容合成失敗", description: "服務發生錯誤，請稍後再試。" });
-      // Set a fallback content for display, even if it's an error message
       setSynthesizedContent({ title: '合成標題失敗', story: '合成故事時遇到問題，請稍後再試。'});
     } finally {
       setIsLoading(prev => ({ ...prev, synthesis: false }));
@@ -400,7 +390,7 @@ export default function InspirationGeneratorClient() {
         toast({ variant: "default", title: "無內容可複製", description: "目前沒有一致性建議可以複製。" });
         return;
     }
-    const textToCopy = suggestions.join('\n\n'); // Separate suggestions with double newlines
+    const textToCopy = suggestions.join('\n\n'); 
     try {
       await navigator.clipboard.writeText(textToCopy);
       toast({ title: "複製成功", description: "一致性建議已複製到剪貼簿！" });
@@ -433,7 +423,6 @@ export default function InspirationGeneratorClient() {
           }));
         })
         .finally(() => {
-           // Use a small timeout to ensure confetti can trigger if the state update causes a quick re-render
           setTimeout(() => {
             setIsLoading(prev => ({ ...prev, elements: { ...prev.elements, [key]: false } }));
           }, 0);
@@ -443,7 +432,6 @@ export default function InspirationGeneratorClient() {
     });
 
     Promise.all(initialLoadPromises).then(() => {
-      // All initial elements are loaded or attempted
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); 
@@ -471,7 +459,11 @@ export default function InspirationGeneratorClient() {
           {isLoading.consistency ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <CheckCircle2 className="mr-2 h-5 w-5" />}
           檢查一致性
         </Button>
-        <Button onClick={handleStorySynthesis} disabled={anyLoading || anyElementLoading} className="bg-primary hover:bg-primary/90 text-primary-foreground flex-1 sm:flex-none rounded-lg shadow-md">
+        <Button 
+          onClick={handleStorySynthesis} 
+          disabled={anyLoading || anyElementLoading} 
+          className="text-white bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 flex-1 sm:flex-none rounded-lg shadow-lg transform transition-all hover:scale-105 active:scale-95 duration-150"
+        >
           {isLoading.synthesis ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <BookText className="mr-2 h-5 w-5" />}
           合成內容
         </Button>
@@ -497,7 +489,7 @@ export default function InspirationGeneratorClient() {
 
       {isLoading.consistency && (
         <div className="my-6 max-w-sm mx-auto px-4">
-          <Progress value={50} className="w-full h-2.5 rounded-full bg-primary/30 [&>div]:bg-primary" /> {/* Indeterminate */}
+          <Progress value={50} className="w-full h-2.5 rounded-full bg-primary/30 [&>div]:bg-primary" /> 
           <p className="text-sm text-muted-foreground text-center mt-2">
             正在檢查一致性...
           </p>
@@ -506,7 +498,7 @@ export default function InspirationGeneratorClient() {
 
       {isLoading.synthesis && (
         <div className="my-6 max-w-sm mx-auto px-4">
-          <Progress value={50} className="w-full h-2.5 rounded-full bg-primary/30 [&>div]:bg-primary" /> {/* Indeterminate */}
+          <Progress value={50} className="w-full h-2.5 rounded-full bg-purple-500/30 [&>div]:bg-gradient-to-r [&>div]:from-purple-500 [&>div]:to-pink-500" /> 
           <p className="text-sm text-muted-foreground text-center mt-2">
             正在合成故事靈感...
           </p>
@@ -522,25 +514,27 @@ export default function InspirationGeneratorClient() {
                 以下是本次潤飾所做的變更：
               </DialogDescription>
             </DialogHeader>
-            <div className="flex-grow min-h-0 overflow-y-auto space-y-4 py-4">
-                {refinementChanges.length > 0 ? (
-                  refinementChanges.map((change, index) => (
-                    <div key={index} className="p-3 border rounded-md bg-muted/30 dark:bg-muted/20">
-                      <h4 className="font-semibold text-primary mb-2">{change.label}</h4>
-                      <div className="mb-2">
-                        <p className="text-xs text-muted-foreground mb-0.5">原文：</p>
-                        <p className="text-sm p-2 bg-background/70 dark:bg-background/50 rounded border border-dashed border-input whitespace-pre-wrap">{change.original.trim() || "（無內容）"}</p>
+            <ScrollArea className="flex-grow min-h-0 w-full">
+              <div className="space-y-4 py-4">
+                  {refinementChanges.length > 0 ? (
+                    refinementChanges.map((change, index) => (
+                      <div key={index} className="p-3 border rounded-md bg-muted/30 dark:bg-muted/20">
+                        <h4 className="font-semibold text-primary mb-2">{change.label}</h4>
+                        <div className="mb-2">
+                          <p className="text-xs text-muted-foreground mb-0.5">原文：</p>
+                          <p className="text-sm p-2 bg-background/70 dark:bg-background/50 rounded border border-dashed border-input whitespace-pre-wrap">{change.original.trim() || "（無內容）"}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-green-600 dark:text-green-500 mb-0.5">潤飾後：</p>
+                          <p className="text-sm p-2 bg-background/70 dark:bg-background/50 rounded border border-green-500/50 whitespace-pre-wrap">{change.refined.trim() || "（無內容）"}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-xs text-green-600 dark:text-green-500 mb-0.5">潤飾後：</p>
-                        <p className="text-sm p-2 bg-background/70 dark:bg-background/50 rounded border border-green-500/50 whitespace-pre-wrap">{change.refined.trim() || "（無內容）"}</p>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-center text-muted-foreground py-4">所有項目的語法均已相當通順，無需調整。</p>
-                )}
-              </div>
+                    ))
+                  ) : (
+                    <p className="text-center text-muted-foreground py-4">所有項目的語法均已相當通順，無需調整。</p>
+                  )}
+                </div>
+            </ScrollArea>
             <DialogFooter className="mt-2 pt-4 border-t"> 
               <Button onClick={() => setIsRefinementDialogOpen(false)}>關閉</Button>
             </DialogFooter>
@@ -639,3 +633,6 @@ export default function InspirationGeneratorClient() {
     
 
 
+
+
+    
