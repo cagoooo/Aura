@@ -314,6 +314,19 @@ export default function InspirationGeneratorClient() {
     try {
       const result = await consistencyCheck(currentTexts);
       setConsistencyResult(result);
+      if (result) {
+        confetti({
+            particleCount: 150,
+            spread: 90, // Wider spread for a softer effect
+            origin: { x: 0.5, y: 0.3 }, // From near top-center
+            angle: 270, // General burst upwards
+            startVelocity: 30,
+            ticks: 250, // Slightly longer
+            gravity: 0.6,
+            colors: ['#4285F4', '#FFA726', '#FFFFFF', '#34A853'], // Primary, Accent, White, Green
+            zIndex: 10001,
+        });
+      }
       if (result.isConsistent) {
         toast({ title: "內容一致性檢查完畢", description: "太棒了！目前的內容看起來前後一致。" });
       } else {
@@ -514,23 +527,23 @@ export default function InspirationGeneratorClient() {
               </DialogDescription>
             </DialogHeader>
             
-            <div className="space-y-0 py-4"> {/* Changed space-y-4 to space-y-0, mb-4 on items will handle spacing */}
+            <div className="flex-grow min-h-0 overflow-y-auto py-4 space-y-4">
                 {refinementChanges.length > 0 ? (
                   refinementChanges.map((change, index) => (
                     <div 
                       key={index} 
-                      className="p-4 border border-blue-200/70 dark:border-blue-800/70 bg-blue-50/50 dark:bg-blue-900/30 rounded-lg shadow-lg mb-4"
+                      className="p-4 border border-blue-200/70 dark:border-blue-800/70 bg-blue-50/50 dark:bg-blue-900/30 rounded-lg shadow-lg"
                     >
                       <h4 className="text-lg font-bold text-primary mb-3">{change.label}</h4>
                       <div className="mb-3">
                         <p className="text-sm font-semibold text-amber-600 dark:text-amber-400 mb-1">原文：</p>
-                        <p className="text-sm p-3 bg-white dark:bg-zinc-700 rounded-md border border-dashed border-slate-400 dark:border-slate-600 whitespace-pre-wrap text-zinc-700 dark:text-zinc-200">
+                        <p className="text-sm p-3 bg-card dark:bg-zinc-700 rounded-md border border-dashed border-slate-400 dark:border-slate-600 whitespace-pre-wrap text-zinc-700 dark:text-zinc-200">
                           {change.original.trim() || "（無內容）"}
                         </p>
                       </div>
                       <div>
                         <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 mb-1">潤飾後：</p>
-                        <p className="text-sm p-3 bg-white dark:bg-zinc-700 rounded-md border border-emerald-500 dark:border-emerald-600 whitespace-pre-wrap text-zinc-800 dark:text-zinc-100">
+                        <p className="text-sm p-3 bg-card dark:bg-zinc-700 rounded-md border border-emerald-500 dark:border-emerald-600 whitespace-pre-wrap text-zinc-800 dark:text-zinc-100">
                           {change.refined.trim() || "（無內容）"}
                         </p>
                       </div>
