@@ -15,11 +15,11 @@ interface W1HElementCardProps {
   element: W1HElement;
   value: string;
   isLocked: boolean;
-  isLoading: boolean;
+  isLoading: boolean; // Individual loading state for this card
   onValueChange: (value: string) => void;
   onRandom: () => void;
   onToggleLock: () => void;
-  mainOperationInProgress?: boolean;
+  mainOperationInProgress?: boolean; // True if a global operation (grammar, consistency, synthesis) is active
   cardClassName?: string;
 }
 
@@ -27,16 +27,23 @@ export default function W1HElementCard({
   element,
   value,
   isLocked,
-  isLoading,
+  isLoading, // This card's specific loading state
   onValueChange,
   onRandom,
   onToggleLock,
-  mainOperationInProgress = false,
+  mainOperationInProgress = false, // True if grammar, consistency, or synthesis is running
   cardClassName,
 }: W1HElementCardProps) {
   const randomButtonText = "隨機產生";
   const randomButtonAriaLabel = `隨機產生${element.label}`;
-  const isButtonDisabled = isLocked || isLoading || mainOperationInProgress;
+  
+  // Button is disabled if locked, or if this card is specifically loading, or if a *different* global operation is in progress.
+  const isRandomButtonDisabled = isLocked || isLoading || mainOperationInProgress;
+  // Textarea is disabled if locked, or if a *different* global operation is in progress. Not disabled by its own isLoading.
+  const isTextareaDisabled = isLocked || mainOperationInProgress;
+  // Lock button is disabled if this card is loading OR if a *different* global operation is in progress.
+  const isLockButtonDisabled = isLoading || mainOperationInProgress;
+
 
   const prevIsLoadingRef = useRef(isLoading);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -46,19 +53,18 @@ export default function W1HElementCard({
       if (cardRef.current) {
         const rect = cardRef.current.getBoundingClientRect();
         const x = (rect.left + rect.width / 2) / window.innerWidth;
-        const y = rect.top / window.innerHeight;
+        const y = rect.top / window.innerHeight; // Use rect.top for more consistent y-origin
 
         confetti({
           particleCount: 80,
           spread: 60,
           origin: { x, y },
           zIndex: 10000,
-          angle: 90,
+          angle: 90, 
           startVelocity: 25,
-          ticks: 150,
+          ticks: 150, 
           colors: ['#FFC700', '#FF8A00', '#4285F4', '#34A853', '#EA4335']
         });
-        // Play sound effect
         try {
           new Audio('/sounds/confetti-short.mp3').play().catch(e => console.warn("Could not play confetti sound:", e));
         } catch (e) {
@@ -70,13 +76,23 @@ export default function W1HElementCard({
   }, [isLoading, value]);
 
   return (
-    <Card ref={cardRef} className={cn("flex flex-col shadow-lg overflow-hidden", cardClassName)}>
+    <Card 
+      ref={cardRef} 
+      id={`w1h-card-${element.key}`} // Added ID for scrolling
+      className={cn("flex flex-col shadow-lg overflow-hidden", cardClassName)}
+    >
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-xl font-semibold text-primary">{element.label}</CardTitle>
         <TooltipProvider>
           <Tooltip delayDuration={300}>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" onClick={onToggleLock} aria-label={isLocked ? '解鎖' : '鎖定'} disabled={mainOperationInProgress}>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={onToggleLock} 
+                aria-label={isLocked ? '解鎖' : '鎖定'} 
+                disabled={isLockButtonDisabled}
+              >
                 {isLocked ? <Lock className="h-5 w-5 text-accent" /> : <Unlock className="h-5 w-5 text-muted-foreground" />}
               </Button>
             </TooltipTrigger>
@@ -92,16 +108,16 @@ export default function W1HElementCard({
           onChange={(e) => onValueChange(e.target.value)}
           placeholder={element.placeholder}
           className="flex-grow min-h-[100px] text-base rounded-md shadow-inner bg-background/50 dark:bg-card"
-          disabled={isLocked || mainOperationInProgress}
+          disabled={isTextareaDisabled}
           aria-label={element.label}
         />
         <Button
           onClick={onRandom}
-          disabled={isButtonDisabled}
+          disabled={isRandomButtonDisabled}
           className="w-full bg-primary hover:bg-primary/90 text-primary-foreground rounded-md"
           aria-label={randomButtonAriaLabel}
         >
-          {isLoading ? (
+          {isLoading ? ( // Shows spinner only when this specific card is loading
             <Loader2 className="h-5 w-5 animate-spin" />
           ) : (
             <Shuffle className="h-5 w-5 mr-2" />
@@ -112,3 +128,4 @@ export default function W1HElementCard({
     </Card>
   );
 }
+

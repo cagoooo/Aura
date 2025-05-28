@@ -194,12 +194,20 @@ export default function InspirationGeneratorClient() {
           existingOptions: W1H_ELEMENTS[key].options, 
         };
         const result = await randomElementGenerate(input);
-        // Immediately update state for this element to trigger its card re-render and confetti
         setW1hData((prevData) => ({
           ...prevData,
           [key]: { ...prevData[key], text: result.generatedText },
         }));
         generatedCount++;
+        
+        // Scroll to the updated card
+        requestAnimationFrame(() => {
+          const cardElement = document.getElementById(`w1h-card-${key}`);
+          if (cardElement) {
+            cardElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          }
+        });
+
       } catch (error) {
         console.error(`Random generation error for ${key} during random all:`, error);
         setW1hData((prevData) => ({
@@ -209,7 +217,11 @@ export default function InspirationGeneratorClient() {
       } finally {
          processedCount++;
          setRandomAllProgress(Math.min((processedCount / totalToProcessCount) * 100, 100));
-         setIsLoading(prev => ({ ...prev, elements: { ...prev.elements, [key]: false } }));
+         // Set individual loading to false *after* potential scroll operation
+         // and confetti has had a chance to trigger based on the state update
+         requestAnimationFrame(() => {
+            setIsLoading(prev => ({ ...prev, elements: { ...prev.elements, [key]: false } }));
+         });
       }
     }
     
@@ -442,9 +454,9 @@ export default function InspirationGeneratorClient() {
           }));
         })
         .finally(() => {
-          setTimeout(() => { 
+          requestAnimationFrame(() => {
             setIsLoading(prev => ({ ...prev, elements: { ...prev.elements, [key]: false } }));
-          }, 0);
+          });
         });
       }
       return Promise.resolve();
@@ -457,8 +469,13 @@ export default function InspirationGeneratorClient() {
   }, []); 
 
 
-  const anyLoading = isLoading.randomAll || isLoading.grammar || isLoading.consistency || isLoading.synthesis;
-  const anyElementLoading = Object.values(isLoading.elements).some(Boolean);
+  const isAnyMainButtonActive = isLoading.randomAll || isLoading.grammar || isLoading.consistency || isLoading.synthesis;
+  const isAnyElementIndividuallyLoading = Object.values(isLoading.elements).some(Boolean);
+  
+  // This prop is passed to W1HElementCard to disable its interactions if a *different* global operation is running.
+  // It should NOT be true if only 'isLoading.randomAll' is true, because 'Random All' manages card states individually.
+  const disableCardInteractionsGlobally = isLoading.grammar || isLoading.consistency || isLoading.synthesis;
+
 
   const renderGrammarButtonIcon = () => {
     if (isLoading.grammar) {
@@ -481,25 +498,33 @@ export default function InspirationGeneratorClient() {
       </p>
 
       <div className="flex flex-col sm:flex-row gap-4 mb-6 justify-center flex-wrap">
-        <Button onClick={handleRandomAll} disabled={anyLoading || anyElementLoading} className="bg-accent hover:bg-accent/90 text-accent-foreground flex-1 sm:flex-none rounded-lg shadow-md">
+        <Button 
+          onClick={handleRandomAll} 
+          disabled={isAnyMainButtonActive || isAnyElementIndividuallyLoading} 
+          className="bg-accent hover:bg-accent/90 text-accent-foreground flex-1 sm:flex-none rounded-lg shadow-md"
+        >
           {isLoading.randomAll ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Shuffle className="mr-2 h-5 w-5" />}
           全部隨機
         </Button>
         <Button 
           onClick={handleGrammarRefinement} 
-          disabled={anyLoading || anyElementLoading || grammarButtonFeedbackIcon !== 'sparkles'} 
+          disabled={isAnyMainButtonActive || isAnyElementIndividuallyLoading || grammarButtonFeedbackIcon !== 'sparkles'} 
           className="bg-primary hover:bg-primary/90 text-primary-foreground flex-1 sm:flex-none rounded-lg shadow-md"
         >
           {renderGrammarButtonIcon()}
           潤飾語法
         </Button>
-        <Button onClick={handleConsistencyCheck} disabled={anyLoading || anyElementLoading} className="bg-primary hover:bg-primary/90 text-primary-foreground flex-1 sm:flex-none rounded-lg shadow-md">
+        <Button 
+          onClick={handleConsistencyCheck} 
+          disabled={isAnyMainButtonActive || isAnyElementIndividuallyLoading} 
+          className="bg-primary hover:bg-primary/90 text-primary-foreground flex-1 sm:flex-none rounded-lg shadow-md"
+        >
           {isLoading.consistency ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <CheckCircle2 className="mr-2 h-5 w-5" />}
           檢查一致性
         </Button>
         <Button 
           onClick={handleStorySynthesis} 
-          disabled={anyLoading || anyElementLoading} 
+          disabled={isAnyMainButtonActive || isAnyElementIndividuallyLoading} 
           className="text-white bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 flex-1 sm:flex-none rounded-lg shadow-lg transform transition-all hover:scale-105 active:scale-95 duration-150"
         >
           {isLoading.synthesis ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <BookText className="mr-2 h-5 w-5" />}
@@ -543,48 +568,45 @@ export default function InspirationGeneratorClient() {
         </div>
       )}
 
-     {isRefinementDialogOpen && (
-        <Dialog open={isRefinementDialogOpen} onOpenChange={setIsRefinementDialogOpen}>
-          <DialogContent className="sm:max-w-[600px] max-h-[85vh] flex flex-col overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>語法潤飾結果</DialogTitle>
-              <DialogDescription>
-                以下是本次潤飾所做的變更：
-              </DialogDescription>
-            </DialogHeader>
-            
-            <div className="py-4 space-y-4 flex-grow min-h-0">
-                {refinementChanges.length > 0 ? (
-                  refinementChanges.map((change, index) => (
-                    <div 
-                      key={index} 
-                      className="p-4 border border-blue-200/70 dark:border-blue-800/70 bg-blue-50/30 dark:bg-blue-950/30 rounded-lg shadow-lg"
-                    >
-                      <h4 className="text-lg font-bold text-primary mb-3">{change.label}</h4>
-                      <div className="mb-3">
-                        <p className="text-sm font-semibold text-amber-600 dark:text-amber-400 mb-1">原文：</p>
-                        <p className="text-sm p-3 bg-card dark:bg-zinc-800 rounded-md border border-dashed border-slate-400 dark:border-slate-600 whitespace-pre-wrap text-zinc-700 dark:text-zinc-200">
-                          {change.original.trim() || "（無內容）"}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 mb-1">潤飾後：</p>
-                        <p className="text-sm p-3 bg-card dark:bg-zinc-800 rounded-md border border-emerald-500 dark:border-emerald-600 whitespace-pre-wrap text-zinc-800 dark:text-zinc-100">
-                          {change.refined.trim() || "（無內容）"}
-                        </p>
-                      </div>
+     <Dialog open={isRefinementDialogOpen} onOpenChange={setIsRefinementDialogOpen}>
+        <DialogContent className="sm:max-w-[600px] max-h-[85vh] flex flex-col overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>語法潤飾結果</DialogTitle>
+            <DialogDescription>
+              以下是本次潤飾所做的變更：
+            </DialogDescription>
+          </DialogHeader>
+            <div className="py-4 space-y-4">
+              {refinementChanges.length > 0 ? (
+                refinementChanges.map((change, index) => (
+                  <div 
+                    key={index} 
+                    className="p-4 border border-blue-200/70 dark:border-blue-800/70 bg-blue-50/30 dark:bg-blue-950/30 rounded-lg shadow-lg"
+                  >
+                    <h4 className="text-lg font-bold text-primary mb-3">{change.label}</h4>
+                    <div className="mb-3">
+                      <p className="text-sm font-semibold text-amber-600 dark:text-amber-400 mb-1">原文：</p>
+                      <p className="text-sm p-3 bg-card dark:bg-zinc-800 rounded-md border border-dashed border-border dark:border-slate-600 whitespace-pre-wrap text-zinc-700 dark:text-zinc-200">
+                        {change.original.trim() || "（無內容）"}
+                      </p>
                     </div>
-                  ))
-                ) : (
-                  <p className="text-center text-muted-foreground py-4">所有項目的語法均已相當通順，無需調整。</p>
-                )}
-              </div>
-            <DialogFooter className="mt-auto pt-4 border-t"> 
-              <Button onClick={() => setIsRefinementDialogOpen(false)}>關閉</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      )}
+                    <div>
+                      <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 mb-1">潤飾後：</p>
+                      <p className="text-sm p-3 bg-card dark:bg-zinc-800 rounded-md border border-emerald-500 dark:border-emerald-400 whitespace-pre-wrap text-zinc-800 dark:text-zinc-100">
+                        {change.refined.trim() || "（無內容）"}
+                      </p>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-center text-muted-foreground py-4">所有項目的語法均已相當通順，無需調整。</p>
+              )}
+            </div>
+          <DialogFooter className="mt-auto pt-4 border-t"> 
+            <Button onClick={() => setIsRefinementDialogOpen(false)}>關閉</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
 
       {consistencyResult && (
@@ -671,7 +693,7 @@ export default function InspirationGeneratorClient() {
             onValueChange={(text) => handleTextChange(key, text)}
             onRandom={() => handleRandomGenerate(key)}
             onToggleLock={() => handleToggleLock(key)}
-            mainOperationInProgress={anyLoading}
+            mainOperationInProgress={disableCardInteractionsGlobally}
             cardClassName={W1H_CARD_COLORS[key]}
           />
         ))}
@@ -679,3 +701,4 @@ export default function InspirationGeneratorClient() {
     </div>
   );
 }
+
