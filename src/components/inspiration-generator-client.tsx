@@ -12,7 +12,7 @@ import { consistencyCheck, ConsistencyCheckInput, ConsistencyCheckOutput } from 
 import { grammarImprovement, GrammarImprovementInput, GrammarImprovementOutput } from '@/ai/flows/grammar-improvement';
 import { storySynthesis, StorySynthesisInput, StorySynthesisOutput } from '@/ai/flows/story-synthesis';
 import { randomElementGenerate, RandomElementGenerationInput, RandomElementGenerationOutput } from '@/ai/flows/random-element-generation';
-import { Loader2, Sparkles, CheckCircle2, Shuffle, BookText, Copy, FileText } from 'lucide-react';
+import { Loader2, Sparkles, CheckCircle2, Shuffle, BookText, Copy, FileText, Check, ThumbsUp } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -24,6 +24,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import confetti from 'canvas-confetti';
+import { cn } from '@/lib/utils';
 
 type W1HState = {
   [key in W1HKey]: {
@@ -129,6 +130,8 @@ export default function InspirationGeneratorClient() {
   
   const [refinementChanges, setRefinementChanges] = useState<RefinementChange[]>([]);
   const [isRefinementDialogOpen, setIsRefinementDialogOpen] = useState(false);
+  const [grammarButtonFeedbackIcon, setGrammarButtonFeedbackIcon] = useState<'sparkles' | 'check' | 'thumbsUp'>('sparkles');
+  const consistencyAlertKey = useRef(0);
 
 
   const handleTextChange = (key: W1HKey, text: string) => {
@@ -205,7 +208,7 @@ export default function InspirationGeneratorClient() {
       } finally {
          processedCount++;
          setRandomAllProgress(Math.min((processedCount / totalToProcessCount) * 100, 100));
-         await new Promise(resolve => setTimeout(resolve, 0)); 
+         // No artificial delay, let React batch updates if it can
          setIsLoading(prev => ({ ...prev, elements: { ...prev.elements, [key]: false } }));
       }
     }
@@ -220,6 +223,7 @@ export default function InspirationGeneratorClient() {
 
   const handleGrammarRefinement = async () => {
     setIsLoading(prev => ({ ...prev, grammar: true }));
+    setGrammarButtonFeedbackIcon('sparkles'); // Reset icon immediately
     setGrammarProgress(0);
     setConsistencyResult(null); 
     setSynthesizedContent(null);
@@ -289,23 +293,21 @@ export default function InspirationGeneratorClient() {
     setIsLoading(prev => ({ ...prev, grammar: false }));
     
     if (actualModificationsCount > 0) {
-      confetti({
-        particleCount: 150,
-        spread: 70,
-        origin: { x: 0.5, y: 0.3 },
-        angle: 270,
-        startVelocity: 30,
-        ticks: 200,
-        gravity: 0.7,
-        colors: ['#4285F4', '#34A853', '#FFA726', '#FFFFFF'], // Blue, Green, Orange, White
-        zIndex: 10001,
-      });
+      setGrammarButtonFeedbackIcon('check');
       setIsRefinementDialogOpen(true); 
       toast({ title: "語法潤飾完畢", description: `已為 ${actualModificationsCount} 個項目提升語法與流暢度。請查看詳細變更。` });
     } else if (totalToRefine > 0 && ALL_W1H_KEYS.some(k => originalW1hData[k].text.trim() !== '')) { 
+      setGrammarButtonFeedbackIcon('thumbsUp');
       toast({ title: "語法檢查完畢", description: "所有項目的語法均已相當通順，無需調整。" });
     } else if (totalToRefine > 0) { 
       toast({ title: "語法潤飾", description: "沒有可潤飾的內容。" });
+      setGrammarButtonFeedbackIcon('sparkles'); // Reset if no content
+    }
+
+    if(actualModificationsCount > 0 || (totalToRefine > 0 && ALL_W1H_KEYS.some(k => originalW1hData[k].text.trim() !== ''))){
+      setTimeout(() => {
+        setGrammarButtonFeedbackIcon('sparkles');
+      }, 3000);
     }
   };
 
@@ -325,19 +327,7 @@ export default function InspirationGeneratorClient() {
     try {
       const result = await consistencyCheck(currentTexts);
       setConsistencyResult(result);
-      if (result) {
-        confetti({
-            particleCount: 150,
-            spread: 90, 
-            origin: { x: 0.5, y: 0.3 }, 
-            angle: 270, 
-            startVelocity: 30,
-            ticks: 250, 
-            gravity: 0.6,
-            colors: ['#4285F4', '#FFA726', '#FFFFFF', '#34A853'], 
-            zIndex: 10001,
-        });
-      }
+      consistencyAlertKey.current += 1; // Increment key to trigger re-animation
       if (result.isConsistent) {
         toast({ title: "內容一致性檢查完畢", description: "太棒了！目前的內容看起來前後一致。" });
       } else {
@@ -347,6 +337,7 @@ export default function InspirationGeneratorClient() {
       console.error("Consistency check error:", error);
       toast({ variant: "destructive", title: "一致性檢查失敗", description: "服務發生錯誤，請稍後再試。" });
       setConsistencyResult({isConsistent: false, suggestions: ['進行一致性檢查時發生錯誤，無法提供建議。']});
+      consistencyAlertKey.current += 1; 
     } finally {
       setIsLoading(prev => ({ ...prev, consistency: false }));
     }
@@ -446,7 +437,7 @@ export default function InspirationGeneratorClient() {
           }));
         })
         .finally(() => {
-          setTimeout(() => {
+          setTimeout(() => { // Use setTimeout to ensure state update and potential re-render cycle completes
             setIsLoading(prev => ({ ...prev, elements: { ...prev.elements, [key]: false } }));
           }, 0);
         });
@@ -455,13 +446,28 @@ export default function InspirationGeneratorClient() {
     });
 
     Promise.all(initialLoadPromises).then(() => {
+      // Initial loading complete
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); 
+  }, []); // Run only on mount
 
 
   const anyLoading = isLoading.randomAll || isLoading.grammar || isLoading.consistency || isLoading.synthesis;
   const anyElementLoading = Object.values(isLoading.elements).some(Boolean);
+
+  const renderGrammarButtonIcon = () => {
+    if (isLoading.grammar) {
+      return <Loader2 className="mr-2 h-5 w-5 animate-spin" />;
+    }
+    switch (grammarButtonFeedbackIcon) {
+      case 'check':
+        return <Check className="mr-2 h-5 w-5 text-green-500" />;
+      case 'thumbsUp':
+        return <ThumbsUp className="mr-2 h-5 w-5 text-blue-500" />;
+      default:
+        return <Sparkles className="mr-2 h-5 w-5" />;
+    }
+  };
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -474,8 +480,12 @@ export default function InspirationGeneratorClient() {
           {isLoading.randomAll ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Shuffle className="mr-2 h-5 w-5" />}
           全部隨機
         </Button>
-        <Button onClick={handleGrammarRefinement} disabled={anyLoading || anyElementLoading} className="bg-primary hover:bg-primary/90 text-primary-foreground flex-1 sm:flex-none rounded-lg shadow-md">
-          {isLoading.grammar ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Sparkles className="mr-2 h-5 w-5" />}
+        <Button 
+          onClick={handleGrammarRefinement} 
+          disabled={anyLoading || anyElementLoading || grammarButtonFeedbackIcon !== 'sparkles'} 
+          className="bg-primary hover:bg-primary/90 text-primary-foreground flex-1 sm:flex-none rounded-lg shadow-md"
+        >
+          {renderGrammarButtonIcon()}
           潤飾語法
         </Button>
         <Button onClick={handleConsistencyCheck} disabled={anyLoading || anyElementLoading} className="bg-primary hover:bg-primary/90 text-primary-foreground flex-1 sm:flex-none rounded-lg shadow-md">
@@ -538,23 +548,23 @@ export default function InspirationGeneratorClient() {
               </DialogDescription>
             </DialogHeader>
             
-            <div className="py-4 space-y-4">
+            <div className="py-4 space-y-4 flex-grow min-h-0"> {/* Removed ScrollArea, DialogContent is now scrollable */}
                 {refinementChanges.length > 0 ? (
                   refinementChanges.map((change, index) => (
                     <div 
                       key={index} 
-                      className="p-4 border border-blue-200/70 dark:border-blue-800/70 bg-blue-50/50 dark:bg-blue-900/30 rounded-lg shadow-lg"
+                      className="p-4 border border-blue-200/70 dark:border-blue-800/70 bg-blue-50/30 dark:bg-blue-950/30 rounded-lg shadow-lg"
                     >
                       <h4 className="text-lg font-bold text-primary mb-3">{change.label}</h4>
                       <div className="mb-3">
                         <p className="text-sm font-semibold text-amber-600 dark:text-amber-400 mb-1">原文：</p>
-                        <p className="text-sm p-3 bg-card dark:bg-zinc-700 rounded-md border border-dashed border-slate-400 dark:border-slate-600 whitespace-pre-wrap text-zinc-700 dark:text-zinc-200">
+                        <p className="text-sm p-3 bg-card dark:bg-zinc-800 rounded-md border border-dashed border-slate-400 dark:border-slate-600 whitespace-pre-wrap text-zinc-700 dark:text-zinc-200">
                           {change.original.trim() || "（無內容）"}
                         </p>
                       </div>
                       <div>
                         <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 mb-1">潤飾後：</p>
-                        <p className="text-sm p-3 bg-card dark:bg-zinc-700 rounded-md border border-emerald-500 dark:border-emerald-600 whitespace-pre-wrap text-zinc-800 dark:text-zinc-100">
+                        <p className="text-sm p-3 bg-card dark:bg-zinc-800 rounded-md border border-emerald-500 dark:border-emerald-600 whitespace-pre-wrap text-zinc-800 dark:text-zinc-100">
                           {change.refined.trim() || "（無內容）"}
                         </p>
                       </div>
@@ -573,7 +583,14 @@ export default function InspirationGeneratorClient() {
 
 
       {consistencyResult && (
-        <Alert className={`mb-8 rounded-lg shadow-md ${consistencyResult.isConsistent ? 'border-green-500 bg-green-50 dark:bg-green-900/30 dark:border-green-700' : 'border-amber-500 bg-amber-50 dark:bg-amber-900/30 dark:border-amber-700'} max-w-3xl mx-auto`}>
+        <Alert 
+          key={`consistency-alert-${consistencyAlertKey.current}`}
+          className={cn(
+            "mb-8 rounded-lg shadow-md max-w-3xl mx-auto",
+            consistencyResult.isConsistent ? 'border-green-500 bg-green-50 dark:bg-green-900/30 dark:border-green-700' : 'border-amber-500 bg-amber-50 dark:bg-amber-900/30 dark:border-amber-700',
+            "animate-in fade-in-0 slide-in-from-top-5 duration-500 ease-out"
+          )}
+        >
            <div className="flex items-center justify-between w-full">
               <div className="flex items-center">
                 <CheckCircle2 className={`h-5 w-5 mr-2 ${consistencyResult.isConsistent ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}`} />
@@ -671,4 +688,5 @@ export default function InspirationGeneratorClient() {
     
 
     
+
 
