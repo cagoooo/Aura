@@ -12,7 +12,7 @@ import { consistencyCheck, ConsistencyCheckInput, ConsistencyCheckOutput } from 
 import { grammarImprovement, GrammarImprovementInput, GrammarImprovementOutput } from '@/ai/flows/grammar-improvement';
 import { storySynthesis, StorySynthesisInput, StorySynthesisOutput } from '@/ai/flows/story-synthesis';
 import { randomElementGenerate, RandomElementGenerationInput, RandomElementGenerationOutput } from '@/ai/flows/random-element-generation';
-import { Loader2, Sparkles, CheckCircle2, Shuffle, BookText, Copy, FileText, Check, ThumbsUp } from 'lucide-react';
+import { Loader2, Sparkles, CheckCircle2, Shuffle, BookText, Copy, FileText, Check, ThumbsUp, Wand2 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -132,6 +132,7 @@ export default function InspirationGeneratorClient() {
   const [isRefinementDialogOpen, setIsRefinementDialogOpen] = useState(false);
   const [grammarButtonFeedbackIcon, setGrammarButtonFeedbackIcon] = useState<'sparkles' | 'check' | 'thumbsUp'>('sparkles');
   const consistencyAlertKey = useRef(0);
+  const storyCardKey = useRef(0);
 
 
   const handleTextChange = (key: W1HKey, text: string) => {
@@ -200,7 +201,6 @@ export default function InspirationGeneratorClient() {
         }));
         generatedCount++;
         
-        // Scroll to the updated card
         requestAnimationFrame(() => {
           const cardElement = document.getElementById(`w1h-card-${key}`);
           if (cardElement) {
@@ -217,8 +217,6 @@ export default function InspirationGeneratorClient() {
       } finally {
          processedCount++;
          setRandomAllProgress(Math.min((processedCount / totalToProcessCount) * 100, 100));
-         // Set individual loading to false *after* potential scroll operation
-         // and confetti has had a chance to trigger based on the state update
          requestAnimationFrame(() => {
             setIsLoading(prev => ({ ...prev, elements: { ...prev.elements, [key]: false } }));
          });
@@ -306,6 +304,7 @@ export default function InspirationGeneratorClient() {
     
     if (actualModificationsCount > 0) {
       setGrammarButtonFeedbackIcon('check');
+      // No confetti here, dialog will open
       setIsRefinementDialogOpen(true); 
       toast({ title: "語法潤飾完畢", description: `已為 ${actualModificationsCount} 個項目提升語法與流暢度。請查看詳細變更。` });
     } else if (totalToRefine > 0 && ALL_W1H_KEYS.some(k => originalW1hData[k].text.trim() !== '')) { 
@@ -373,19 +372,9 @@ export default function InspirationGeneratorClient() {
     try {
       const result = await storySynthesis(currentTexts);
       setSynthesizedContent(result);
+      storyCardKey.current += 1; // Increment key to trigger animation
 
       if (result && result.story && result.title && !errorTitles.includes(result.title)) {
-         confetti({
-          particleCount: 300, 
-          spread: 120,        
-          origin: { x: 0.5, y: 0.5 }, 
-          ticks: 400,         
-          gravity: 0.7,
-          startVelocity: 45,
-          scalar: 1.2,        
-          zIndex: 10001,       
-          colors: ['#FFC107', '#E91E63', '#2196F3', '#4CAF50', '#FF5722', '#9C27B0', '#00BCD4'] 
-        });
         try {
           new Audio('/sounds/confetti-grand.mp3').play().catch(e => console.warn("Could not play grand confetti sound:", e));
         } catch (e) {
@@ -399,6 +388,7 @@ export default function InspirationGeneratorClient() {
       console.error("Story synthesis error:", error);
       toast({ variant: "destructive", title: "內容合成失敗", description: "服務發生錯誤，請稍後再試。" });
       setSynthesizedContent({ title: '合成標題失敗', story: '合成故事時遇到問題，請稍後再試。'});
+      storyCardKey.current += 1; 
     } finally {
       setIsLoading(prev => ({ ...prev, synthesis: false }));
     }
@@ -472,8 +462,6 @@ export default function InspirationGeneratorClient() {
   const isAnyMainButtonActive = isLoading.randomAll || isLoading.grammar || isLoading.consistency || isLoading.synthesis;
   const isAnyElementIndividuallyLoading = Object.values(isLoading.elements).some(Boolean);
   
-  // This prop is passed to W1HElementCard to disable its interactions if a *different* global operation is running.
-  // It should NOT be true if only 'isLoading.randomAll' is true, because 'Random All' manages card states individually.
   const disableCardInteractionsGlobally = isLoading.grammar || isLoading.consistency || isLoading.synthesis;
 
 
@@ -486,8 +474,8 @@ export default function InspirationGeneratorClient() {
         return <Check className="mr-2 h-5 w-5 text-green-500" />;
       case 'thumbsUp':
         return <ThumbsUp className="mr-2 h-5 w-5 text-blue-500" />;
-      default:
-        return <Sparkles className="mr-2 h-5 w-5" />;
+      default: // 'sparkles'
+        return <Wand2 className="mr-2 h-5 w-5" />; // Changed from Sparkles to Wand2
     }
   };
 
@@ -576,7 +564,7 @@ export default function InspirationGeneratorClient() {
               以下是本次潤飾所做的變更：
             </DialogDescription>
           </DialogHeader>
-            <div className="py-4 space-y-4">
+            <div className="py-4 space-y-4 flex-grow min-h-0 overflow-y-auto">
               {refinementChanges.length > 0 ? (
                 refinementChanges.map((change, index) => (
                   <div 
@@ -637,7 +625,7 @@ export default function InspirationGeneratorClient() {
                 </Button>
               )}
             </div>
-          <AlertDescription className={`text-sm ${consistencyResult.isConsistent ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'} leading-relaxed mt-2`}>
+          <AlertDescription className={`text-sm ${consistencyResult.isConsistent ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'} leading-relaxed mt-2 space-y-1.5`}>
             {consistencyResult.isConsistent 
               ? "目前的5W1H元素組合看起來很棒，前後呼應！" 
               : (
@@ -660,9 +648,12 @@ export default function InspirationGeneratorClient() {
       )}
 
       {synthesizedContent && (
-        <Card className="mb-8 rounded-lg shadow-xl border border-primary/30 bg-card max-w-3xl mx-auto">
+        <Card 
+          key={`story-card-${storyCardKey.current}`} 
+          className="mb-8 rounded-lg shadow-xl border border-primary/30 bg-card max-w-3xl mx-auto animate-in fade-in-0 zoom-in-95 slide-in-from-bottom-10 duration-700 ease-out"
+        >
           <CardHeader className="flex flex-row items-center justify-between p-6 pb-2">
-             <div className="flex items-center gap-3">
+             <div className="flex items-center gap-3 animate-in fade-in-0 slide-in-from-bottom-5 duration-500 ease-out delay-300 fill-mode-both">
               <FileText className="h-6 w-6 text-primary" />
               <CardTitle className="text-xl font-semibold text-primary">{synthesizedContent.title || '合成故事靈感'}</CardTitle>
             </div>
@@ -671,12 +662,12 @@ export default function InspirationGeneratorClient() {
               size="icon"
               onClick={() => handleCopySynthesizedStory(synthesizedContent)}
               aria-label="複製故事靈感"
-              className="text-primary hover:text-primary/80"
+              className="text-primary hover:text-primary/80 animate-in fade-in-0 duration-500 ease-out delay-300 fill-mode-both"
             >
               <Copy className="h-5 w-5" />
             </Button>
           </CardHeader>
-          <CardContent className="p-6 pt-4">
+          <CardContent className="p-6 pt-4 animate-in fade-in-0 slide-in-from-bottom-5 duration-500 ease-out delay-500 fill-mode-both">
             <p className="text-base leading-relaxed text-foreground whitespace-pre-wrap">{synthesizedContent.story}</p>
           </CardContent>
         </Card>
