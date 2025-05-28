@@ -12,7 +12,7 @@ import { consistencyCheck, ConsistencyCheckInput, ConsistencyCheckOutput } from 
 import { grammarImprovement, GrammarImprovementInput, GrammarImprovementOutput } from '@/ai/flows/grammar-improvement';
 import { storySynthesis, StorySynthesisInput, StorySynthesisOutput } from '@/ai/flows/story-synthesis';
 import { randomElementGenerate, RandomElementGenerationInput, RandomElementGenerationOutput } from '@/ai/flows/random-element-generation';
-import { Loader2, Sparkles, CheckCircle2, Shuffle, BookText, Copy, FileText, Check, ThumbsUp, Wand2 } from 'lucide-react';
+import { Loader2, CheckCircle2, Shuffle, BookText, Copy, FileText, Check, ThumbsUp, Wand2 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -225,7 +225,7 @@ export default function InspirationGeneratorClient() {
     
     setIsLoading(prev => ({ ...prev, randomAll: false }));
     if (generatedCount > 0) {
-        toast({ title: "全部隨機完畢", description: `已為 ${generatedCount} 個未鎖定項目產生新內容。` });
+        toast({ variant: "success", title: "全部隨機完畢", description: `已為 ${generatedCount} 個未鎖定項目產生新內容。` });
     } else if (totalToProcessCount > 0) {
         toast({ title: "全部隨機完畢", description: `處理了 ${totalToProcessCount} 個項目，但由於錯誤或未返回內容，部分可能使用備用選項。` });
     }
@@ -305,22 +305,17 @@ export default function InspirationGeneratorClient() {
     if (actualModificationsCount > 0) {
       setGrammarButtonFeedbackIcon('check');
       try {
-        confetti({
-          particleCount: 100,
-          spread: 70,
-          origin: { y: 0.6, x: 0.5 },
-          colors: ['#4285F4', '#FFA726', '#FFFFFF', '#34A853'], // Blue, Orange, White, Green
-          zIndex: 10000
-        });
+        // No confetti, button icon feedback instead
+        // confetti(...) 
         new Audio('/sounds/confetti-short.mp3').play().catch(e => console.warn("Could not play short confetti sound:", e));
       } catch(e) {
-        console.warn("Error triggering confetti or sound for grammar refinement:", e);
+        console.warn("Error triggering sound for grammar refinement:", e);
       }
       setIsRefinementDialogOpen(true); 
-      toast({ title: "語法潤飾完畢", description: `已為 ${actualModificationsCount} 個項目提升語法與流暢度。請查看詳細變更。` });
+      toast({ variant: "success", title: "語法潤飾完畢", description: `已為 ${actualModificationsCount} 個項目提升語法與流暢度。請查看詳細變更。` });
     } else if (totalToRefine > 0 && ALL_W1H_KEYS.some(k => originalW1hData[k].text.trim() !== '')) { 
       setGrammarButtonFeedbackIcon('thumbsUp');
-      toast({ title: "語法檢查完畢", description: "所有項目的語法均已相當通順，無需調整。" });
+      toast({ variant: "success", title: "語法檢查完畢", description: "所有項目的語法均已相當通順，無需調整。" });
     } else if (totalToRefine > 0) { 
       toast({ title: "語法潤飾", description: "沒有可潤飾的內容。" });
       setGrammarButtonFeedbackIcon('wand'); 
@@ -350,10 +345,11 @@ export default function InspirationGeneratorClient() {
       const result = await consistencyCheck(currentTexts);
       setConsistencyResult(result);
       consistencyAlertKey.current += 1; 
+      // No confetti for consistency check, Alert animation instead
       if (result.isConsistent) {
-        toast({ title: "內容一致性檢查完畢", description: "太棒了！目前的內容看起來前後一致。" });
+        toast({ variant: "success", title: "內容一致性檢查完畢", description: "太棒了！目前的內容看起來前後一致。" });
       } else {
-         toast({ title: "內容一致性檢查完畢", description: "提供了一些調整建議，請參考下方提示。" });
+         toast({ variant: "success", title: "內容一致性檢查完畢", description: "提供了一些調整建議，請參考下方提示。" });
       }
     } catch (error) {
       console.error("Consistency check error:", error);
@@ -403,7 +399,7 @@ export default function InspirationGeneratorClient() {
         } catch (e) {
             console.warn("Audio context error for grand confetti sound:", e);
         }
-        toast({ title: "內容合成成功", description: "已根據您的5W1H元素生成了一段故事靈感！" });
+        toast({ variant: "success", title: "內容合成成功", description: "已根據您的5W1H元素生成了一段故事靈感！" });
       } else {
         toast({ variant: "destructive", title: result.title || "內容合成失敗", description: result.story || "服務發生錯誤，請稍後再試。" });
       }
@@ -422,7 +418,7 @@ export default function InspirationGeneratorClient() {
     const textToCopy = `${content.title}\n\n${content.story}`;
     try {
       await navigator.clipboard.writeText(textToCopy);
-      toast({ title: "複製成功", description: "故事靈感已複製到剪貼簿！" });
+      toast({ variant: "success", title: "複製成功", description: "故事靈感已複製到剪貼簿！" });
     } catch (err) {
       console.error('Failed to copy text: ', err);
       toast({ variant: "destructive", title: "複製失敗", description: "無法複製內容，請再試一次。" });
@@ -437,7 +433,7 @@ export default function InspirationGeneratorClient() {
     const textToCopy = suggestions.join('\n\n'); 
     try {
       await navigator.clipboard.writeText(textToCopy);
-      toast({ title: "複製成功", description: "一致性建議已複製到剪貼簿！" });
+      toast({ variant: "success", title: "複製成功", description: "一致性建議已複製到剪貼簿！" });
     } catch (err) {
       console.error('Failed to copy consistency suggestions: ', err);
       toast({ variant: "destructive", title: "複製失敗", description: "無法複製建議內容，請再試一次。" });
