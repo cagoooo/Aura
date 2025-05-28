@@ -194,6 +194,7 @@ export default function InspirationGeneratorClient() {
           existingOptions: W1H_ELEMENTS[key].options, 
         };
         const result = await randomElementGenerate(input);
+        // Immediately update state for this element to trigger its card re-render and confetti
         setW1hData((prevData) => ({
           ...prevData,
           [key]: { ...prevData[key], text: result.generatedText },
@@ -208,7 +209,6 @@ export default function InspirationGeneratorClient() {
       } finally {
          processedCount++;
          setRandomAllProgress(Math.min((processedCount / totalToProcessCount) * 100, 100));
-         // No artificial delay, let React batch updates if it can
          setIsLoading(prev => ({ ...prev, elements: { ...prev.elements, [key]: false } }));
       }
     }
@@ -223,7 +223,7 @@ export default function InspirationGeneratorClient() {
 
   const handleGrammarRefinement = async () => {
     setIsLoading(prev => ({ ...prev, grammar: true }));
-    setGrammarButtonFeedbackIcon('sparkles'); // Reset icon immediately
+    setGrammarButtonFeedbackIcon('sparkles'); 
     setGrammarProgress(0);
     setConsistencyResult(null); 
     setSynthesizedContent(null);
@@ -301,7 +301,7 @@ export default function InspirationGeneratorClient() {
       toast({ title: "語法檢查完畢", description: "所有項目的語法均已相當通順，無需調整。" });
     } else if (totalToRefine > 0) { 
       toast({ title: "語法潤飾", description: "沒有可潤飾的內容。" });
-      setGrammarButtonFeedbackIcon('sparkles'); // Reset if no content
+      setGrammarButtonFeedbackIcon('sparkles'); 
     }
 
     if(actualModificationsCount > 0 || (totalToRefine > 0 && ALL_W1H_KEYS.some(k => originalW1hData[k].text.trim() !== ''))){
@@ -327,7 +327,7 @@ export default function InspirationGeneratorClient() {
     try {
       const result = await consistencyCheck(currentTexts);
       setConsistencyResult(result);
-      consistencyAlertKey.current += 1; // Increment key to trigger re-animation
+      consistencyAlertKey.current += 1; 
       if (result.isConsistent) {
         toast({ title: "內容一致性檢查完畢", description: "太棒了！目前的內容看起來前後一致。" });
       } else {
@@ -374,6 +374,11 @@ export default function InspirationGeneratorClient() {
           zIndex: 10001,       
           colors: ['#FFC107', '#E91E63', '#2196F3', '#4CAF50', '#FF5722', '#9C27B0', '#00BCD4'] 
         });
+        try {
+          new Audio('/sounds/confetti-grand.mp3').play().catch(e => console.warn("Could not play grand confetti sound:", e));
+        } catch (e) {
+            console.warn("Audio context error for grand confetti sound:", e);
+        }
         toast({ title: "內容合成成功", description: "已根據您的5W1H元素生成了一段故事靈感！" });
       } else {
         toast({ variant: "destructive", title: result.title || "內容合成失敗", description: result.story || "服務發生錯誤，請稍後再試。" });
@@ -437,7 +442,7 @@ export default function InspirationGeneratorClient() {
           }));
         })
         .finally(() => {
-          setTimeout(() => { // Use setTimeout to ensure state update and potential re-render cycle completes
+          setTimeout(() => { 
             setIsLoading(prev => ({ ...prev, elements: { ...prev.elements, [key]: false } }));
           }, 0);
         });
@@ -449,7 +454,7 @@ export default function InspirationGeneratorClient() {
       // Initial loading complete
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Run only on mount
+  }, []); 
 
 
   const anyLoading = isLoading.randomAll || isLoading.grammar || isLoading.consistency || isLoading.synthesis;
@@ -548,7 +553,7 @@ export default function InspirationGeneratorClient() {
               </DialogDescription>
             </DialogHeader>
             
-            <div className="py-4 space-y-4 flex-grow min-h-0"> {/* Removed ScrollArea, DialogContent is now scrollable */}
+            <div className="py-4 space-y-4 flex-grow min-h-0">
                 {refinementChanges.length > 0 ? (
                   refinementChanges.map((change, index) => (
                     <div 
@@ -674,19 +679,3 @@ export default function InspirationGeneratorClient() {
     </div>
   );
 }
-    
-
-    
-
-
-
-
-    
-
-    
-
-    
-
-    
-
-

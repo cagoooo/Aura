@@ -42,11 +42,9 @@ export default function W1HElementCard({
   const cardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Check if loading has just finished (was true, now false) and we have a new value
     if (prevIsLoadingRef.current && !isLoading && value) {
       if (cardRef.current) {
         const rect = cardRef.current.getBoundingClientRect();
-        // Calculate origin for confetti: center of the card's top edge
         const x = (rect.left + rect.width / 2) / window.innerWidth;
         const y = rect.top / window.innerHeight;
 
@@ -54,19 +52,25 @@ export default function W1HElementCard({
           particleCount: 80,
           spread: 60,
           origin: { x, y },
-          zIndex: 10000, // Ensure confetti is on top of other elements
-          angle: 90, // Shoots straight up initially
+          zIndex: 10000,
+          angle: 90,
           startVelocity: 25,
-          ticks: 150, // Duration of confetti
-          colors: ['#FFC700', '#FF8A00', '#4285F4', '#34A853', '#EA4335'] // Example colors
+          ticks: 150,
+          colors: ['#FFC700', '#FF8A00', '#4285F4', '#34A853', '#EA4335']
         });
+        // Play sound effect
+        try {
+          new Audio('/sounds/confetti-short.mp3').play().catch(e => console.warn("Could not play confetti sound:", e));
+        } catch (e) {
+          console.warn("Audio context error for confetti sound:", e);
+        }
       }
     }
     prevIsLoadingRef.current = isLoading;
   }, [isLoading, value]);
 
   return (
-    <Card ref={cardRef} className={cn("flex flex-col shadow-lg overflow-hidden", cardClassName)}> {/* Added overflow-hidden for safety with confetti */}
+    <Card ref={cardRef} className={cn("flex flex-col shadow-lg overflow-hidden", cardClassName)}>
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-xl font-semibold text-primary">{element.label}</CardTitle>
         <TooltipProvider>
