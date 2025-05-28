@@ -130,7 +130,7 @@ export default function InspirationGeneratorClient() {
   
   const [refinementChanges, setRefinementChanges] = useState<RefinementChange[]>([]);
   const [isRefinementDialogOpen, setIsRefinementDialogOpen] = useState(false);
-  const [grammarButtonFeedbackIcon, setGrammarButtonFeedbackIcon] = useState<'sparkles' | 'check' | 'thumbsUp'>('sparkles');
+  const [grammarButtonFeedbackIcon, setGrammarButtonFeedbackIcon] = useState<'wand' | 'check' | 'thumbsUp'>('wand');
   const consistencyAlertKey = useRef(0);
   const storyCardKey = useRef(0);
 
@@ -233,7 +233,7 @@ export default function InspirationGeneratorClient() {
 
   const handleGrammarRefinement = async () => {
     setIsLoading(prev => ({ ...prev, grammar: true }));
-    setGrammarButtonFeedbackIcon('sparkles'); 
+    setGrammarButtonFeedbackIcon('wand'); 
     setGrammarProgress(0);
     setConsistencyResult(null); 
     setSynthesizedContent(null);
@@ -304,7 +304,18 @@ export default function InspirationGeneratorClient() {
     
     if (actualModificationsCount > 0) {
       setGrammarButtonFeedbackIcon('check');
-      // No confetti here, dialog will open
+      try {
+        confetti({
+          particleCount: 100,
+          spread: 70,
+          origin: { y: 0.6, x: 0.5 },
+          colors: ['#4285F4', '#FFA726', '#FFFFFF', '#34A853'], // Blue, Orange, White, Green
+          zIndex: 10000
+        });
+        new Audio('/sounds/confetti-short.mp3').play().catch(e => console.warn("Could not play short confetti sound:", e));
+      } catch(e) {
+        console.warn("Error triggering confetti or sound for grammar refinement:", e);
+      }
       setIsRefinementDialogOpen(true); 
       toast({ title: "語法潤飾完畢", description: `已為 ${actualModificationsCount} 個項目提升語法與流暢度。請查看詳細變更。` });
     } else if (totalToRefine > 0 && ALL_W1H_KEYS.some(k => originalW1hData[k].text.trim() !== '')) { 
@@ -312,12 +323,12 @@ export default function InspirationGeneratorClient() {
       toast({ title: "語法檢查完畢", description: "所有項目的語法均已相當通順，無需調整。" });
     } else if (totalToRefine > 0) { 
       toast({ title: "語法潤飾", description: "沒有可潤飾的內容。" });
-      setGrammarButtonFeedbackIcon('sparkles'); 
+      setGrammarButtonFeedbackIcon('wand'); 
     }
 
     if(actualModificationsCount > 0 || (totalToRefine > 0 && ALL_W1H_KEYS.some(k => originalW1hData[k].text.trim() !== ''))){
       setTimeout(() => {
-        setGrammarButtonFeedbackIcon('sparkles');
+        setGrammarButtonFeedbackIcon('wand');
       }, 3000);
     }
   };
@@ -372,10 +383,22 @@ export default function InspirationGeneratorClient() {
     try {
       const result = await storySynthesis(currentTexts);
       setSynthesizedContent(result);
-      storyCardKey.current += 1; // Increment key to trigger animation
+      storyCardKey.current += 1; 
 
       if (result && result.story && result.title && !errorTitles.includes(result.title)) {
         try {
+           confetti({
+            particleCount: 250, 
+            spread: 120, 
+            origin: { y: 0.5, x: 0.5 }, 
+            zIndex: 10000,
+            angle: 90,
+            startVelocity: 45,
+            gravity: 0.8,
+            drift: 0,
+            ticks: 300,
+            colors: ['#FFC700', '#FF6B6B', '#4ECDC4', '#45B7D1', '#F7B801', '#5F95FE', '#FAD02C'],
+          });
           new Audio('/sounds/confetti-grand.mp3').play().catch(e => console.warn("Could not play grand confetti sound:", e));
         } catch (e) {
             console.warn("Audio context error for grand confetti sound:", e);
@@ -474,8 +497,8 @@ export default function InspirationGeneratorClient() {
         return <Check className="mr-2 h-5 w-5 text-green-500" />;
       case 'thumbsUp':
         return <ThumbsUp className="mr-2 h-5 w-5 text-blue-500" />;
-      default: // 'sparkles'
-        return <Wand2 className="mr-2 h-5 w-5" />; // Changed from Sparkles to Wand2
+      default: // 'wand'
+        return <Wand2 className="mr-2 h-5 w-5" />; 
     }
   };
 
@@ -496,7 +519,7 @@ export default function InspirationGeneratorClient() {
         </Button>
         <Button 
           onClick={handleGrammarRefinement} 
-          disabled={isAnyMainButtonActive || isAnyElementIndividuallyLoading || grammarButtonFeedbackIcon !== 'sparkles'} 
+          disabled={isAnyMainButtonActive || isAnyElementIndividuallyLoading || grammarButtonFeedbackIcon !== 'wand'} 
           className="bg-primary hover:bg-primary/90 text-primary-foreground flex-1 sm:flex-none rounded-lg shadow-md"
         >
           {renderGrammarButtonIcon()}
