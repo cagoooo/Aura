@@ -305,8 +305,6 @@ export default function InspirationGeneratorClient() {
     if (actualModificationsCount > 0) {
       setGrammarButtonFeedbackIcon('check');
       try {
-        // No confetti, button icon feedback instead
-        // confetti(...) 
         new Audio('/sounds/confetti-short.mp3').play().catch(e => console.warn("Could not play short confetti sound:", e));
       } catch(e) {
         console.warn("Error triggering sound for grammar refinement:", e);
@@ -345,7 +343,24 @@ export default function InspirationGeneratorClient() {
       const result = await consistencyCheck(currentTexts);
       setConsistencyResult(result);
       consistencyAlertKey.current += 1; 
-      // No confetti for consistency check, Alert animation instead
+      // Confetti for consistency check
+      if (result.isConsistent || (!result.isConsistent && result.suggestions.length > 0)) {
+        try {
+          confetti({
+            particleCount: 120,
+            spread: 70,
+            origin: { y: 0.6, x: 0.5 },
+            zIndex: 10000,
+            angle: 90,
+            startVelocity: 30,
+            colors: ['#2196F3', '#FF9800', '#FFFFFF', '#4CAF50', '#FFC107'], // Blue, Orange, White, Green, Amber
+          });
+          new Audio('/sounds/confetti-short.mp3').play().catch(e => console.warn("Could not play short confetti sound:", e));
+        } catch (e) {
+          console.warn("Audio context error for confetti sound:", e);
+        }
+      }
+
       if (result.isConsistent) {
         toast({ variant: "success", title: "內容一致性檢查完畢", description: "太棒了！目前的內容看起來前後一致。" });
       } else {
@@ -508,7 +523,7 @@ export default function InspirationGeneratorClient() {
         <Button 
           onClick={handleRandomAll} 
           disabled={isAnyMainButtonActive || isAnyElementIndividuallyLoading} 
-          className="bg-accent hover:bg-accent/90 text-accent-foreground flex-1 sm:flex-none rounded-lg shadow-md"
+          className="bg-accent hover:bg-accent/90 text-accent-foreground flex-1 sm:flex-none rounded-lg shadow-md text-base h-12"
         >
           {isLoading.randomAll ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Shuffle className="mr-2 h-5 w-5" />}
           全部隨機
@@ -516,7 +531,7 @@ export default function InspirationGeneratorClient() {
         <Button 
           onClick={handleGrammarRefinement} 
           disabled={isAnyMainButtonActive || isAnyElementIndividuallyLoading || grammarButtonFeedbackIcon !== 'wand'} 
-          className="bg-primary hover:bg-primary/90 text-primary-foreground flex-1 sm:flex-none rounded-lg shadow-md"
+          className="bg-primary hover:bg-primary/90 text-primary-foreground flex-1 sm:flex-none rounded-lg shadow-md text-base h-12"
         >
           {renderGrammarButtonIcon()}
           潤飾語法
@@ -524,7 +539,7 @@ export default function InspirationGeneratorClient() {
         <Button 
           onClick={handleConsistencyCheck} 
           disabled={isAnyMainButtonActive || isAnyElementIndividuallyLoading} 
-          className="bg-primary hover:bg-primary/90 text-primary-foreground flex-1 sm:flex-none rounded-lg shadow-md"
+          className="bg-primary hover:bg-primary/90 text-primary-foreground flex-1 sm:flex-none rounded-lg shadow-md text-base h-12"
         >
           {isLoading.consistency ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <CheckCircle2 className="mr-2 h-5 w-5" />}
           檢查一致性
@@ -532,7 +547,7 @@ export default function InspirationGeneratorClient() {
         <Button 
           onClick={handleStorySynthesis} 
           disabled={isAnyMainButtonActive || isAnyElementIndividuallyLoading} 
-          className="text-white bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 flex-1 sm:flex-none rounded-lg shadow-lg transform transition-all hover:scale-105 active:scale-95 duration-150"
+          className="text-white bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 flex-1 sm:flex-none rounded-lg shadow-lg transform transition-all hover:scale-105 active:scale-95 duration-150 text-base h-12"
         >
           {isLoading.synthesis ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <BookText className="mr-2 h-5 w-5" />}
           合成內容
@@ -583,32 +598,32 @@ export default function InspirationGeneratorClient() {
               以下是本次潤飾所做的變更：
             </DialogDescription>
           </DialogHeader>
-            <div className="py-4 space-y-4 flex-grow min-h-0 overflow-y-auto">
-              {refinementChanges.length > 0 ? (
-                refinementChanges.map((change, index) => (
-                  <div 
-                    key={index} 
-                    className="p-4 border border-blue-200/70 dark:border-blue-800/70 bg-blue-50/30 dark:bg-blue-950/30 rounded-lg shadow-lg"
-                  >
-                    <h4 className="text-lg font-bold text-primary mb-3">{change.label}</h4>
-                    <div className="mb-3">
-                      <p className="text-sm font-semibold text-amber-600 dark:text-amber-400 mb-1">原文：</p>
-                      <p className="text-sm p-3 bg-card dark:bg-zinc-800 rounded-md border border-dashed border-border dark:border-slate-600 whitespace-pre-wrap text-zinc-700 dark:text-zinc-200">
-                        {change.original.trim() || "（無內容）"}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 mb-1">潤飾後：</p>
-                      <p className="text-sm p-3 bg-card dark:bg-zinc-800 rounded-md border border-emerald-500 dark:border-emerald-400 whitespace-pre-wrap text-zinc-800 dark:text-zinc-100">
-                        {change.refined.trim() || "（無內容）"}
-                      </p>
-                    </div>
+          <div className="py-4 space-y-4 flex-grow min-h-0 overflow-y-auto">
+            {refinementChanges.length > 0 ? (
+              refinementChanges.map((change, index) => (
+                <div 
+                  key={index} 
+                  className="p-4 border border-blue-200/70 dark:border-blue-800/70 bg-blue-50/30 dark:bg-blue-950/30 rounded-lg shadow-lg"
+                >
+                  <h4 className="text-lg font-bold text-primary mb-3">{change.label}</h4>
+                  <div className="mb-3">
+                    <p className="text-sm font-semibold text-amber-600 dark:text-amber-400 mb-1">原文：</p>
+                    <p className="text-sm p-3 bg-card dark:bg-zinc-800 rounded-md border border-dashed border-border dark:border-slate-600 whitespace-pre-wrap text-zinc-700 dark:text-zinc-200">
+                      {change.original.trim() || "（無內容）"}
+                    </p>
                   </div>
-                ))
-              ) : (
-                <p className="text-center text-muted-foreground py-4">所有項目的語法均已相當通順，無需調整。</p>
-              )}
-            </div>
+                  <div>
+                    <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 mb-1">潤飾後：</p>
+                    <p className="text-sm p-3 bg-card dark:bg-zinc-800 rounded-md border border-emerald-500 dark:border-emerald-400 whitespace-pre-wrap text-zinc-800 dark:text-zinc-100">
+                      {change.refined.trim() || "（無內容）"}
+                    </p>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-center text-muted-foreground py-4">所有項目的語法均已相當通順，無需調整。</p>
+            )}
+          </div>
           <DialogFooter className="mt-auto pt-4 border-t"> 
             <Button onClick={() => setIsRefinementDialogOpen(false)}>關閉</Button>
           </DialogFooter>
