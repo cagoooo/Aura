@@ -343,7 +343,6 @@ export default function InspirationGeneratorClient() {
       const result = await consistencyCheck(currentTexts);
       setConsistencyResult(result);
       consistencyAlertKey.current += 1; 
-      // Confetti for consistency check
       if (result.isConsistent || (!result.isConsistent && result.suggestions.length > 0)) {
         try {
           confetti({
@@ -353,7 +352,7 @@ export default function InspirationGeneratorClient() {
             zIndex: 10000,
             angle: 90,
             startVelocity: 30,
-            colors: ['#2196F3', '#FF9800', '#FFFFFF', '#4CAF50', '#FFC107'], // Blue, Orange, White, Green, Amber
+            colors: ['#2196F3', '#FF9800', '#FFFFFF', '#4CAF50', '#FFC107'],
           });
           new Audio('/sounds/confetti-short.mp3').play().catch(e => console.warn("Could not play short confetti sound:", e));
         } catch (e) {
@@ -456,39 +455,51 @@ export default function InspirationGeneratorClient() {
   };
   
   useEffect(() => {
-    const initialLoadPromises = ALL_W1H_KEYS.map(key => {
-      if (!w1hData[key].text) { 
-        setIsLoading(prev => ({ ...prev, elements: { ...prev.elements, [key]: true } }));
-        return randomElementGenerate({
-          elementType: key,
-          elementLabel: W1H_ELEMENTS[key].label,
-          existingOptions: W1H_ELEMENTS[key].options,
-        })
-        .then(result => {
-          setW1hData(prevData => ({
-            ...prevData,
-            [key]: { ...prevData[key], text: result.generatedText },
-          }));
-        })
-        .catch(error => {
-          console.error(`Initial random generation error for ${key}:`, error);
-          setW1hData(prevData => ({
-            ...prevData,
-            [key]: { ...prevData[key], text: getRandomItem(W1H_ELEMENTS[key].options) },
-          }));
-        })
-        .finally(() => {
-          requestAnimationFrame(() => {
-            setIsLoading(prev => ({ ...prev, elements: { ...prev.elements, [key]: false } }));
-          });
-        });
-      }
-      return Promise.resolve();
-    });
+    const populateInitialElements = async () => {
+      for (const key of ALL_W1H_KEYS) {
+        // Check current state directly inside the loop before attempting to populate
+        // This requires w1hData to be a dependency if we want to be perfectly correct,
+        // but for initial load, this structure relies on the initial empty state.
+        // For this specific use case (run once, populate empty), not adding w1hData as a dep is acceptable.
+        // @ts-ignore w1hData is from useState, so it's stable in terms of reference for this check on initial mount
+        if (w1hData[key].text === '') {
+          setIsLoading(prev => ({ ...prev, elements: { ...prev.elements, [key]: true } }));
+          try {
+            const result = await randomElementGenerate({
+              elementType: key,
+              elementLabel: W1H_ELEMENTS[key].label,
+              existingOptions: W1H_ELEMENTS[key].options,
+            });
+            
+            setW1hData(prevData => ({
+              ...prevData,
+              [key]: { ...prevData[key], text: result.generatedText },
+            }));
 
-    Promise.all(initialLoadPromises).then(() => {
-      // Initial loading complete
-    });
+            // Wait for DOM update and then scroll
+            requestAnimationFrame(() => {
+              const cardElement = document.getElementById(`w1h-card-${key}`);
+              if (cardElement) {
+                cardElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+              }
+            });
+
+          } catch (error) {
+            console.error(`Initial random generation error for ${key}:`, error);
+            setW1hData(prevData => ({
+              ...prevData,
+              [key]: { ...prevData[key], text: getRandomItem(W1H_ELEMENTS[key].options) },
+            }));
+          } finally {
+             requestAnimationFrame(() => { // Ensure isLoading is set false in the next frame
+                setIsLoading(prev => ({ ...prev, elements: { ...prev.elements, [key]: false } }));
+             });
+          }
+        }
+      }
+    };
+
+    populateInitialElements();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); 
 
@@ -508,7 +519,7 @@ export default function InspirationGeneratorClient() {
         return <Check className="mr-2 h-5 w-5 text-green-500" />;
       case 'thumbsUp':
         return <ThumbsUp className="mr-2 h-5 w-5 text-blue-500" />;
-      default: // 'wand'
+      default: 
         return <Wand2 className="mr-2 h-5 w-5" />; 
     }
   };
@@ -711,6 +722,7 @@ export default function InspirationGeneratorClient() {
         {ALL_W1H_KEYS.map((key) => (
           <W1HElementCard
             key={key}
+            id={`w1h-card-${key}`}
             element={W1H_ELEMENTS[key]}
             value={w1hData[key].text}
             isLocked={w1hData[key].isLocked}
