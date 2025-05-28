@@ -289,6 +289,17 @@ export default function InspirationGeneratorClient() {
     setIsLoading(prev => ({ ...prev, grammar: false }));
     
     if (actualModificationsCount > 0) {
+      confetti({
+        particleCount: 150,
+        spread: 70,
+        origin: { x: 0.5, y: 0.3 },
+        angle: 270,
+        startVelocity: 30,
+        ticks: 200,
+        gravity: 0.7,
+        colors: ['#4285F4', '#34A853', '#FFA726', '#FFFFFF'], // Blue, Green, Orange, White
+        zIndex: 10001,
+      });
       setIsRefinementDialogOpen(true); 
       toast({ title: "語法潤飾完畢", description: `已為 ${actualModificationsCount} 個項目提升語法與流暢度。請查看詳細變更。` });
     } else if (totalToRefine > 0 && ALL_W1H_KEYS.some(k => originalW1hData[k].text.trim() !== '')) { 
@@ -317,13 +328,13 @@ export default function InspirationGeneratorClient() {
       if (result) {
         confetti({
             particleCount: 150,
-            spread: 90, // Wider spread for a softer effect
-            origin: { x: 0.5, y: 0.3 }, // From near top-center
-            angle: 270, // General burst upwards
+            spread: 90, 
+            origin: { x: 0.5, y: 0.3 }, 
+            angle: 270, 
             startVelocity: 30,
-            ticks: 250, // Slightly longer
+            ticks: 250, 
             gravity: 0.6,
-            colors: ['#4285F4', '#FFA726', '#FFFFFF', '#34A853'], // Primary, Accent, White, Green
+            colors: ['#4285F4', '#FFA726', '#FFFFFF', '#34A853'], 
             zIndex: 10001,
         });
       }
@@ -527,7 +538,7 @@ export default function InspirationGeneratorClient() {
               </DialogDescription>
             </DialogHeader>
             
-            <div className="flex-grow min-h-0 overflow-y-auto py-4 space-y-4">
+            <div className="py-4 space-y-4">
                 {refinementChanges.length > 0 ? (
                   refinementChanges.map((change, index) => (
                     <div 
@@ -660,3 +671,4 @@ export default function InspirationGeneratorClient() {
     
 
     
+
