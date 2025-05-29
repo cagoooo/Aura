@@ -133,6 +133,7 @@ export default function InspirationGeneratorClient() {
   const [grammarButtonFeedbackIcon, setGrammarButtonFeedbackIcon] = useState<'wand' | 'check' | 'thumbsUp'>('wand');
   const consistencyAlertKey = useRef(0);
   const storyCardKey = useRef(0);
+  const synthesizedStoryCardRef = useRef<HTMLDivElement>(null);
 
 
   const handleTextChange = (key: W1HKey, text: string) => {
@@ -227,7 +228,7 @@ export default function InspirationGeneratorClient() {
     if (generatedCount > 0) {
         toast({ variant: "success", title: "全部隨機完畢", description: `已為 ${generatedCount} 個未鎖定項目產生新內容。` });
     } else if (totalToProcessCount > 0) {
-        toast({ title: "全部隨機完畢", description: `處理了 ${totalToProcessCount} 個項目，但由於錯誤或未返回內容，部分可能使用備用選項。` });
+        toast({ variant: "success", title: "全部隨機完畢", description: `處理了 ${totalToProcessCount} 個項目，但由於錯誤或未返回內容，部分可能使用備用選項。` });
     }
   };
 
@@ -427,6 +428,17 @@ export default function InspirationGeneratorClient() {
     }
   };
 
+  useEffect(() => {
+    if (synthesizedContent && synthesizedContent.story && synthesizedStoryCardRef.current) {
+      requestAnimationFrame(() => {
+        synthesizedStoryCardRef.current?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center',
+        });
+      });
+    }
+  }, [synthesizedContent]);
+
   const handleCopySynthesizedStory = async (content: SynthesizedContent | null) => {
     if (!content || !content.story) return;
     const textToCopy = `${content.title}\n\n${content.story}`;
@@ -457,42 +469,42 @@ export default function InspirationGeneratorClient() {
   useEffect(() => {
     const populateInitialElements = async () => {
       let initialUpdateOccurred = false;
-      for (const key of ALL_W1H_KEYS) {
-        // @ts-ignore
-        if (w1hData[key].text === '') { 
-          initialUpdateOccurred = true;
-          setIsLoading(prev => ({ ...prev, elements: { ...prev.elements, [key]: true } }));
-          try {
-            const result = await randomElementGenerate({
-              elementType: key,
-              elementLabel: W1H_ELEMENTS[key].label,
-              existingOptions: W1H_ELEMENTS[key].options,
-            });
-            
-            setW1hData(prevData => ({
-              ...prevData,
-              [key]: { ...prevData[key], text: result.generatedText },
-            }));
+      const initialElementsToProcess = ALL_W1H_KEYS.filter(key => w1hData[key as W1HKey].text === '');
 
-            // Wait for DOM update and then scroll
-            requestAnimationFrame(() => {
-              const cardElement = document.getElementById(`w1h-card-${key}`);
-              if (cardElement) {
-                cardElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-              }
-            });
+      if (initialElementsToProcess.length === 0) return;
 
-          } catch (error) {
-            console.error(`Initial random generation error for ${key}:`, error);
-            setW1hData(prevData => ({
-              ...prevData,
-              [key]: { ...prevData[key], text: getRandomItem(W1H_ELEMENTS[key].options) },
-            }));
-          } finally {
-             requestAnimationFrame(() => { 
-                setIsLoading(prev => ({ ...prev, elements: { ...prev.elements, [key]: false } }));
-             });
-          }
+      for (const key of initialElementsToProcess) {
+        initialUpdateOccurred = true;
+        setIsLoading(prev => ({ ...prev, elements: { ...prev.elements, [key as W1HKey]: true } }));
+        try {
+          const result = await randomElementGenerate({
+            elementType: key as W1HKey,
+            elementLabel: W1H_ELEMENTS[key as W1HKey].label,
+            existingOptions: W1H_ELEMENTS[key as W1HKey].options,
+          });
+          
+          setW1hData(prevData => ({
+            ...prevData,
+            [key as W1HKey]: { ...prevData[key as W1HKey], text: result.generatedText },
+          }));
+
+          requestAnimationFrame(() => {
+            const cardElement = document.getElementById(`w1h-card-${key}`);
+            if (cardElement) {
+              cardElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+          });
+
+        } catch (error) {
+          console.error(`Initial random generation error for ${key}:`, error);
+          setW1hData(prevData => ({
+            ...prevData,
+            [key as W1HKey]: { ...prevData[key as W1HKey], text: getRandomItem(W1H_ELEMENTS[key as W1HKey].options) },
+          }));
+        } finally {
+           requestAnimationFrame(() => { 
+              setIsLoading(prev => ({ ...prev, elements: { ...prev.elements, [key as W1HKey]: false } }));
+           });
         }
       }
       if (initialUpdateOccurred) {
@@ -695,6 +707,7 @@ export default function InspirationGeneratorClient() {
 
       {synthesizedContent && (
         <Card 
+          ref={synthesizedStoryCardRef}
           key={`story-card-${storyCardKey.current}`} 
           className="mb-8 rounded-lg shadow-xl border border-primary/30 bg-card max-w-3xl mx-auto animate-in fade-in-0 zoom-in-95 slide-in-from-bottom-10 duration-700 ease-out"
         >
