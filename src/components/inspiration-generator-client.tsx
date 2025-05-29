@@ -456,13 +456,11 @@ export default function InspirationGeneratorClient() {
   
   useEffect(() => {
     const populateInitialElements = async () => {
+      let initialUpdateOccurred = false;
       for (const key of ALL_W1H_KEYS) {
-        // Check current state directly inside the loop before attempting to populate
-        // This requires w1hData to be a dependency if we want to be perfectly correct,
-        // but for initial load, this structure relies on the initial empty state.
-        // For this specific use case (run once, populate empty), not adding w1hData as a dep is acceptable.
-        // @ts-ignore w1hData is from useState, so it's stable in terms of reference for this check on initial mount
-        if (w1hData[key].text === '') {
+        // @ts-ignore
+        if (w1hData[key].text === '') { 
+          initialUpdateOccurred = true;
           setIsLoading(prev => ({ ...prev, elements: { ...prev.elements, [key]: true } }));
           try {
             const result = await randomElementGenerate({
@@ -491,11 +489,14 @@ export default function InspirationGeneratorClient() {
               [key]: { ...prevData[key], text: getRandomItem(W1H_ELEMENTS[key].options) },
             }));
           } finally {
-             requestAnimationFrame(() => { // Ensure isLoading is set false in the next frame
+             requestAnimationFrame(() => { 
                 setIsLoading(prev => ({ ...prev, elements: { ...prev.elements, [key]: false } }));
              });
           }
         }
+      }
+      if (initialUpdateOccurred) {
+        toast({ variant: "success", title: "初始靈感已填入！", description: "已為您填入一些初始的5W1H靈感點子。" });
       }
     };
 
@@ -526,7 +527,7 @@ export default function InspirationGeneratorClient() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <p className="text-center text-lg text-foreground mb-8 max-w-prose mx-auto">
+      <p className="text-center text-lg text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-950/70 p-6 rounded-xl shadow-lg mb-8 max-w-prose mx-auto border border-blue-200 dark:border-blue-800">
         點擊「隨機產生」來獲得靈感，或使用工具「潤飾語法」、「檢查一致性」及「合成內容」來完善您的創意點子！
       </p>
 
