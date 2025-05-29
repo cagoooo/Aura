@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 import confetti from 'canvas-confetti';
 
 interface W1HElementCardProps {
+  id: string; // Ensure id is part of props
   element: W1HElement;
   value: string;
   isLocked: boolean;
@@ -24,6 +25,7 @@ interface W1HElementCardProps {
 }
 
 export default function W1HElementCard({
+  id,
   element,
   value,
   isLocked,
@@ -31,19 +33,15 @@ export default function W1HElementCard({
   onValueChange,
   onRandom,
   onToggleLock,
-  mainOperationInProgress = false, // True if grammar, consistency, or synthesis is running
+  mainOperationInProgress = false,
   cardClassName,
 }: W1HElementCardProps) {
   const randomButtonText = "隨機產生";
   const randomButtonAriaLabel = `隨機產生${element.label}`;
   
-  // Button is disabled if locked, or if this card is specifically loading, or if a *different* global operation is in progress.
   const isRandomButtonDisabled = isLocked || isLoading || mainOperationInProgress;
-  // Textarea is disabled if locked, or if a *different* global operation is in progress. Not disabled by its own isLoading.
   const isTextareaDisabled = isLocked || mainOperationInProgress;
-  // Lock button is disabled if this card is loading OR if a *different* global operation is in progress.
   const isLockButtonDisabled = isLoading || mainOperationInProgress;
-
 
   const prevIsLoadingRef = useRef(isLoading);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -53,7 +51,7 @@ export default function W1HElementCard({
       if (cardRef.current) {
         const rect = cardRef.current.getBoundingClientRect();
         const x = (rect.left + rect.width / 2) / window.innerWidth;
-        const y = rect.top / window.innerHeight; // Use rect.top for more consistent y-origin
+        const y = rect.top / window.innerHeight; 
 
         confetti({
           particleCount: 80,
@@ -78,8 +76,11 @@ export default function W1HElementCard({
   return (
     <Card 
       ref={cardRef} 
-      id={`w1h-card-${element.key}`} // Added ID for scrolling
-      className={cn("flex flex-col shadow-lg overflow-hidden", cardClassName)}
+      id={id} // Use the passed id prop
+      className={cn(
+        "flex flex-col overflow-hidden transition-all duration-200 ease-out hover:shadow-xl hover:-translate-y-1",
+        cardClassName
+      )}
     >
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-xl font-semibold text-primary">{element.label}</CardTitle>
@@ -117,7 +118,7 @@ export default function W1HElementCard({
           className="w-full bg-primary hover:bg-primary/90 text-primary-foreground rounded-md"
           aria-label={randomButtonAriaLabel}
         >
-          {isLoading ? ( // Shows spinner only when this specific card is loading
+          {isLoading ? ( 
             <Loader2 className="h-5 w-5 animate-spin" />
           ) : (
             <Shuffle className="h-5 w-5 mr-2" />
@@ -128,4 +129,3 @@ export default function W1HElementCard({
     </Card>
   );
 }
-
