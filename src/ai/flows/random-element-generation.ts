@@ -16,7 +16,7 @@ import { W1H_ELEMENTS } from '@/lib/constants';
 const RandomElementGenerationInputSchema = z.object({
   elementType: z.enum(['who', 'what', 'when', 'where', 'why', 'how']).describe('The type of 5W1H element to generate (e.g., "who", "what").'),
   elementLabel: z.string().describe('The display label of the element (e.g., "誰 (Who)").'),
-  existingOptions: z.array(z.string()).describe('A list of existing example options for this element, which the AI should try to differ from significantly. The AI should also avoid generating content similar to what it might have generated recently or common tropes, aiming for true novelty each time.'),
+  existingOptions: z.array(z.string()).describe('A list of default examples AND RECENTLY GENERATED IDEAS for this element. The AI must generate something significantly different from ALL of these. The goal is true novelty each time, avoiding repetition of any themes, styles, or specific phrases from this list, or common tropes in general.'),
 });
 export type RandomElementGenerationInput = z.infer<typeof RandomElementGenerationInputSchema>;
 
@@ -44,7 +44,7 @@ Your task is to provide a **COMPLETELY NEW, FRESH, VIVID, and IMAGINATIVE** phra
 
 It absolutely must NOT be:
 - An improvement, variation, or modification of any previous text or common tropes.
-- Similar to the provided existing examples (these are only for context of what NOT to generate or be similar to):
+- Similar to ANY of the provided examples or recently generated ideas listed below (these are examples of what to AVOID):
   {{#each existingOptions}}
   - {{{this}}}
   {{/each}}

@@ -115,6 +115,15 @@ export default function InspirationGeneratorClient() {
     return initialState;
   });
 
+  const [recentSessionSuggestions, setRecentSessionSuggestions] = useState<Record<W1HKey, string[]>>(() => {
+    const initialState = {} as Record<W1HKey, string[]>;
+    for (const key of ALL_W1H_KEYS) {
+      initialState[key] = [];
+    }
+    return initialState;
+  });
+
+
   const [isLoading, setIsLoading] = useState({
     grammar: false,
     consistency: false,
@@ -149,13 +158,31 @@ export default function InspirationGeneratorClient() {
 
     setIsLoading(prev => ({ ...prev, elements: { ...prev.elements, [key]: true } }));
     try {
+      const allAvoidOptions = [
+        ...W1H_ELEMENTS[key].options,
+        ...(recentSessionSuggestions[key] || [])
+      ];
+      const uniqueAvoidOptions = Array.from(new Set(allAvoidOptions));
+
       const input: RandomElementGenerationInput = {
         elementType: key,
         elementLabel: W1H_ELEMENTS[key].label,
-        existingOptions: W1H_ELEMENTS[key].options,
+        existingOptions: uniqueAvoidOptions,
       };
       const result = await randomElementGenerate(input);
       setW1hData((prev) => ({ ...prev, [key]: { ...prev[key], text: result.generatedText } }));
+      
+      setRecentSessionSuggestions(prev => {
+        const updatedSuggestions = [...(prev[key] || [])];
+        if (result.generatedText && !updatedSuggestions.includes(result.generatedText)) {
+          updatedSuggestions.unshift(result.generatedText);
+        }
+        return {
+          ...prev,
+          [key]: updatedSuggestions.slice(0, 5) // Keep last 5
+        };
+      });
+
     } catch (error) {
       console.error(`Random generation error for ${key}:`, error);
       const randomText = getRandomItem(W1H_ELEMENTS[key].options);
@@ -164,7 +191,7 @@ export default function InspirationGeneratorClient() {
     } finally {
       setIsLoading(prev => ({ ...prev, elements: { ...prev.elements, [key]: false } }));
     }
-  }, [w1hData, toast]);
+  }, [w1hData, toast, recentSessionSuggestions]);
 
   const handleRandomAll = async () => {
     setIsLoading(prev => ({ ...prev, randomAll: true }));
@@ -190,16 +217,34 @@ export default function InspirationGeneratorClient() {
     for (const key of elementsToProcessKeys) {
       setIsLoading(prev => ({ ...prev, elements: { ...prev.elements, [key]: true } }));
       try {
+        const allAvoidOptions = [
+          ...W1H_ELEMENTS[key].options,
+          ...(recentSessionSuggestions[key] || [])
+        ];
+        const uniqueAvoidOptions = Array.from(new Set(allAvoidOptions));
+
         const input: RandomElementGenerationInput = {
           elementType: key,
           elementLabel: W1H_ELEMENTS[key].label,
-          existingOptions: W1H_ELEMENTS[key].options, 
+          existingOptions: uniqueAvoidOptions, 
         };
         const result = await randomElementGenerate(input);
         setW1hData((prevData) => ({
           ...prevData,
           [key]: { ...prevData[key], text: result.generatedText },
         }));
+
+        setRecentSessionSuggestions(prev => {
+          const updatedSuggestions = [...(prev[key] || [])];
+          if (result.generatedText && !updatedSuggestions.includes(result.generatedText)) {
+            updatedSuggestions.unshift(result.generatedText);
+          }
+          return {
+            ...prev,
+            [key]: updatedSuggestions.slice(0, 5) // Keep last 5
+          };
+        });
+
         generatedCount++;
         
         requestAnimationFrame(() => {
@@ -316,7 +361,7 @@ export default function InspirationGeneratorClient() {
       setGrammarButtonFeedbackIcon('thumbsUp');
       toast({ variant: "success", title: "語法檢查完畢", description: "所有項目的語法均已相當通順，無需調整。" });
     } else if (totalToRefine > 0) { 
-      toast({ title: "語法潤飾", description: "沒有可潤飾的內容。" });
+      toast({ variant: "success", title: "語法潤飾", description: "沒有可潤飾的內容。" });
       setGrammarButtonFeedbackIcon('wand'); 
     }
 
@@ -474,19 +519,39 @@ export default function InspirationGeneratorClient() {
       if (initialElementsToProcess.length === 0) return;
 
       for (const key of initialElementsToProcess) {
+        if (w1hData[key as W1HKey].text !== '') continue; // Skip if already populated by another concurrent effect
+
         initialUpdateOccurred = true;
         setIsLoading(prev => ({ ...prev, elements: { ...prev.elements, [key as W1HKey]: true } }));
         try {
+          const allAvoidOptions = [
+            ...W1H_ELEMENTS[key as W1HKey].options,
+            ...(recentSessionSuggestions[key as W1HKey] || [])
+          ];
+          const uniqueAvoidOptions = Array.from(new Set(allAvoidOptions));
+
           const result = await randomElementGenerate({
             elementType: key as W1HKey,
             elementLabel: W1H_ELEMENTS[key as W1HKey].label,
-            existingOptions: W1H_ELEMENTS[key as W1HKey].options,
+            existingOptions: uniqueAvoidOptions,
           });
           
           setW1hData(prevData => ({
             ...prevData,
             [key as W1HKey]: { ...prevData[key as W1HKey], text: result.generatedText },
           }));
+
+          setRecentSessionSuggestions(prev => {
+            const updatedSuggestions = [...(prev[key as W1HKey] || [])];
+             if (result.generatedText && !updatedSuggestions.includes(result.generatedText)) {
+                updatedSuggestions.unshift(result.generatedText);
+            }
+            return {
+              ...prev,
+              [key as W1HKey]: updatedSuggestions.slice(0, 5)
+            };
+          });
+
 
           requestAnimationFrame(() => {
             const cardElement = document.getElementById(`w1h-card-${key}`);
