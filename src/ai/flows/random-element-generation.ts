@@ -34,7 +34,7 @@ const randomElementGenerationPrompt = ai.definePrompt({
   input: {schema: RandomElementGenerationInputSchema},
   output: {schema: RandomElementGenerationOutputSchema},
   prompt: `You are a highly creative AI assistant specializing in generating **truly unique, unexpected, and widely diverse** story components using natural and fluent Traditional Chinese that is common in Taiwan. Avoid Mainland Chinese specific terminology.
-Your task is to provide a **COMPLETELY NEW, FRESH, VIVID, and IMAGINATIVE** phrase or short sentence for the story element: {{{elementLabel}}} (type: {{{elementType}}}).
+Your task is to provide a **CONCISE yet IMPACTFUL, COMPLETELY NEW, FRESH, VIVID, and IMAGINATIVE** phrase or short sentence for the story element: {{{elementLabel}}} (type: {{{elementType}}}). Aim for brevity without sacrificing creativity or clarity.
 
 **CRITICALLY IMPORTANT: All generated text MUST be suitable for a GENERAL audience and EXTREMELY UNLIKELY to be flagged by automated content moderation systems on common public platforms (e.g., blogs, social media). This means avoiding not only overtly harmful content but also nuanced themes, specific word choices, or scenarios that, while creatively intended, might be misinterpreted by strict algorithms as depicting controversial topics, dangerous activities, or violations of acceptable use policies. Prioritize universal appropriateness, clarity, and positive or neutral themes. If an idea seems even slightly risky for broad platform acceptance, CHOOSE A SAFER ALTERNATIVE. Focus on creativity that is universally appropriate and respectful.**
 
