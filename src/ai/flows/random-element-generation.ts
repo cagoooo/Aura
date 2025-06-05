@@ -38,6 +38,8 @@ Your task is to provide a **COMPLETELY NEW, FRESH, VIVID, and IMAGINATIVE** phra
 
 **CRITICALLY IMPORTANT: All generated text MUST be suitable for a GENERAL audience and EXTREMELY UNLIKELY to be flagged by automated content moderation systems on common public platforms (e.g., blogs, social media). This means avoiding not only overtly harmful content but also nuanced themes, specific word choices, or scenarios that, while creatively intended, might be misinterpreted by strict algorithms as depicting controversial topics, dangerous activities, or violations of acceptable use policies. Prioritize universal appropriateness, clarity, and positive or neutral themes. If an idea seems even slightly risky for broad platform acceptance, CHOOSE A SAFER ALTERNATIVE. Focus on creativity that is universally appropriate and respectful.**
 
+**Self-Correction for Novelty:** Critically, you must actively avoid repeating thematic, stylistic, or structural patterns from your own previous generations for the *same element type* (e.g., if you just generated a 'Who' about a detective, your next 'Who' should be completely different). Each request for '{{{elementLabel}}}' is a demand for a fresh, genuinely unpredictable idea, distinct from anything you've offered for this element moments ago or in the past. If you find yourself generating multiple ideas for '{{{elementLabel}}}' that start similarly or revolve around a similar core concept (e.g., multiple 'mysterious objects' for 'What'), consciously break that pattern and introduce significant structural or conceptual variation.
+
 **This generation must be treated as a "blank slate" and achieve genuine surprise with each output.**
 
 It absolutely must NOT be:
@@ -72,6 +74,7 @@ Or for '何事 (What)':
 }
 `,
   config: {
+    temperature: 1.0, // Encourage more diverse, less predictable output
     safetySettings: [
       { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_LOW_AND_ABOVE' },
       { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_LOW_AND_ABOVE' },
