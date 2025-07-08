@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import AppHeader from '@/components/app-header';
 import AppFooter from '@/components/app-footer';
 import FloatingAdButton from '@/components/floating-ad-button';
+import FloatingAssistantButton from '@/components/floating-assistant-button';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -34,6 +35,7 @@ export default function RootLayout({
         <main className="flex-grow">{children}</main>
         <AppFooter />
         <FloatingAdButton />
+        <FloatingAssistantButton />
         <Toaster />
       </body>
     </html>
