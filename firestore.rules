@@ -1,0 +1,12 @@
+rules_version = '2';
+
+// All client reads/writes denied. Stories are written + read only via
+// Cloud Functions (which use Admin SDK and bypass rules). This is the
+// safest pattern: clients never talk to Firestore directly.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

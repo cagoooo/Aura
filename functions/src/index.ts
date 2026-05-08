@@ -8,7 +8,15 @@ import { runRandomElementGeneration } from './flows/random-element-generation';
 import { runGrammarImprovement, type GrammarImprovementInput } from './flows/grammar-improvement';
 import { runConsistencyCheck } from './flows/consistency-check';
 import { runStorySynthesis } from './flows/story-synthesis';
+import { runAnalyzeImage } from './flows/analyze-image';
 import { verifyTurnstileToken, TurnstileError } from './turnstile';
+import { initializeApp } from 'firebase-admin/app';
+import { getFirestore, Timestamp } from 'firebase-admin/firestore';
+
+initializeApp();
+const db = getFirestore();
+const STORIES_COLLECTION = 'sharedStories';
+const STORY_TTL_DAYS = 90;
 
 setGlobalOptions({
   region: 'asia-east1',
@@ -66,6 +74,127 @@ export const randomElement = wrapFlow(runRandomElementGeneration);
 export const grammarImprove = wrapFlow(runGrammarImprovement);
 export const checkConsistency = wrapFlow(runConsistencyCheck);
 export const synthesizeStory = wrapFlow(runStorySynthesis);
+
+// Permanent share links — Firestore-backed.
+// saveStory: returns { id }; client builds /Aura/#/s/<id> URL.
+// getStory: read-only fetch by id; renders shared view page.
+type SharedW1H = { who: string; what: string; when: string; where: string; why: string; how: string };
+type SaveStoryInput = {
+  title: string;
+  story: string;
+  w1h: SharedW1H;
+  turnstileToken?: string;
+};
+
+const SHORT_ID_LEN = 10;
+const generateShortId = (): string => {
+  const alphabet = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  let id = '';
+  for (let i = 0; i < SHORT_ID_LEN; i++) {
+    id += alphabet[Math.floor(Math.random() * alphabet.length)];
+  }
+  return id;
+};
+
+const MAX_STORY_BYTES = 50 * 1024;  // 50KB hard cap; typical stories are <2KB
+
+export const saveStory = onRequest(
+  { secrets: SECRETS },
+  withCors(async (req, res) => {
+    if (req.method === 'OPTIONS') { res.status(204).send(''); return; }
+    if (req.method !== 'POST') { res.status(405).json({ success: false, error: 'POST only' }); return; }
+    const input = (req.body ?? {}) as SaveStoryInput;
+    await verifyTurnstileToken(input.turnstileToken);
+
+    if (!input.title || !input.story || !input.w1h) {
+      res.status(400).json({ success: false, error: 'title / story / w1h are required' });
+      return;
+    }
+    const docSize = Buffer.byteLength(JSON.stringify(input), 'utf8');
+    if (docSize > MAX_STORY_BYTES) {
+      res.status(413).json({ success: false, error: 'Story too large to share.' });
+      return;
+    }
+
+    // Retry on collision (extremely rare with 36^10 = 3.6 × 10^15 keyspace)
+    let id = '';
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const candidate = generateShortId();
+      const docRef = db.collection(STORIES_COLLECTION).doc(candidate);
+      const existing = await docRef.get();
+      if (!existing.exists) {
+        const expiresAt = Timestamp.fromMillis(Date.now() + STORY_TTL_DAYS * 24 * 3600 * 1000);
+        await docRef.set({
+          title: input.title,
+          story: input.story,
+          w1h: input.w1h,
+          createdAt: Timestamp.now(),
+          expiresAt,
+        });
+        id = candidate;
+        break;
+      }
+    }
+    if (!id) {
+      res.status(500).json({ success: false, error: 'Could not allocate share id; please retry.' });
+      return;
+    }
+    res.json({ success: true, data: { id } });
+  })
+);
+
+export const getStory = onRequest(
+  {},  // no secrets needed for read; no Turnstile (public read)
+  withCors(async (req, res) => {
+    if (req.method === 'OPTIONS') { res.status(204).send(''); return; }
+    const id = (req.query.id as string | undefined)?.trim();
+    if (!id || !/^[a-z0-9]{6,16}$/.test(id)) {
+      res.status(400).json({ success: false, error: 'invalid id' });
+      return;
+    }
+    const doc = await db.collection(STORIES_COLLECTION).doc(id).get();
+    if (!doc.exists) {
+      res.status(404).json({ success: false, error: 'Story not found or expired.' });
+      return;
+    }
+    const data = doc.data()!;
+    res.json({
+      success: true,
+      data: {
+        title: data.title,
+        story: data.story,
+        w1h: data.w1h,
+        createdAt: data.createdAt?.toMillis?.() ?? null,
+      },
+    });
+  })
+);
+
+// Multimodal: analyze an image and produce 5W1H story concept.
+// Larger memory + timeout because Gemini vision is slower than text-only.
+export const analyzeImage = onRequest(
+  { secrets: SECRETS, memory: '1GiB', timeoutSeconds: 60 },
+  withCors(async (req, res) => {
+    if (req.method === 'OPTIONS') { res.status(204).send(''); return; }
+    if (req.method !== 'POST') {
+      res.status(405).json({ success: false, error: 'POST only' });
+      return;
+    }
+    const input = (req.body ?? {}) as { imageDataUrl?: string; turnstileToken?: string };
+    await verifyTurnstileToken(input.turnstileToken);
+    if (!input.imageDataUrl || !input.imageDataUrl.startsWith('data:image/')) {
+      res.status(400).json({ success: false, error: 'imageDataUrl missing or not a data:image/* URL' });
+      return;
+    }
+    // Reject overly large payloads (~1.5MB raw, equivalent to ~1.1MB after base64 decode)
+    if (input.imageDataUrl.length > 1_500_000) {
+      res.status(413).json({ success: false, error: '圖片太大，請壓縮到 1MB 以下再上傳。' });
+      return;
+    }
+    const data = await runAnalyzeImage({ imageDataUrl: input.imageDataUrl });
+    res.json({ success: true, data });
+  })
+);
 
 // Bulk endpoint: one Turnstile token + parallel Gemini calls.
 // Used by initial page load and "全部隨機" to avoid the latency of

@@ -14,8 +14,11 @@ import {
   randomElementGenerate, type RandomElementGenerationInput,
   randomElementBulk,
   grammarImproveBulk,
+  analyzeImage,
+  saveStory,
 } from '@/lib/api';
-import { Loader2, CheckCircle2, Shuffle, BookText, Copy, FileText, Check, ThumbsUp, Wand2, Printer, ChevronDown } from 'lucide-react';
+import ImageUploadDialog from '@/components/image-upload-dialog';
+import { Loader2, CheckCircle2, Shuffle, BookText, Copy, FileText, Check, ThumbsUp, Wand2, Printer, ChevronDown, Camera, Presentation, Share2, Link2 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -143,8 +146,12 @@ export default function InspirationGeneratorClient() {
     consistency: false,
     randomAll: false,
     synthesis: false,
+    analyze: false,
+    share: false,
     elements: {} as Record<W1HKey, boolean>,
   });
+
+  const [imageDialogOpen, setImageDialogOpen] = useState(false);
 
   const [randomAllProgress, setRandomAllProgress] = useState(0);
   const [grammarProgress, setGrammarProgress] = useState(0);
@@ -524,6 +531,97 @@ export default function InspirationGeneratorClient() {
     }
   };
 
+  // #10 — Image → 5W1H
+  const handleAnalyzeImage = async (imageDataUrl: string) => {
+    setIsLoading(prev => ({ ...prev, analyze: true }));
+    try {
+      const turnstileToken = await getTurnstileToken();
+      const result = await analyzeImage({ imageDataUrl, turnstileToken });
+      // Replace all 6 cards (skip locked ones)
+      setW1hData(prev => {
+        const next = { ...prev };
+        ALL_W1H_KEYS.forEach((key) => {
+          if (prev[key].isLocked) return;
+          const v = (result as any)[key];
+          if (typeof v === 'string' && v.trim()) {
+            next[key] = { ...next[key], text: v.trim() };
+          }
+        });
+        return next;
+      });
+      setImageDialogOpen(false);
+      toast({ variant: "success", title: "看圖編故事完成", description: "AI 已根據圖片填入 6 個 W1H 元素，開始你的故事吧！" });
+    } catch (e: any) {
+      console.error('analyzeImage failed:', e);
+      throw e;  // dialog catches and shows in-dialog error
+    } finally {
+      setIsLoading(prev => ({ ...prev, analyze: false }));
+    }
+  };
+
+  // #12 — Save story to Firestore and copy share URL to clipboard
+  const handleShareStory = async () => {
+    if (!synthesizedContent || !synthesizedContent.story) return;
+    setIsLoading(prev => ({ ...prev, share: true }));
+    try {
+      const turnstileToken = await getTurnstileToken();
+      const { id } = await saveStory({
+        title: synthesizedContent.title,
+        story: synthesizedContent.story,
+        w1h: {
+          who: w1hData.who.text, what: w1hData.what.text,
+          when: w1hData.when.text, where: w1hData.where.text,
+          why: w1hData.why.text, how: w1hData.how.text,
+        },
+        turnstileToken,
+      });
+      const url = `${window.location.origin}${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}/#/s/${id}`;
+      await navigator.clipboard.writeText(url);
+      toast({ variant: "success", title: "分享連結已複製", description: url });
+    } catch (e: any) {
+      console.error('saveStory failed:', e);
+      toast({ variant: "destructive", title: "分享失敗", description: e?.message ?? "請稍後再試。" });
+    } finally {
+      setIsLoading(prev => ({ ...prev, share: false }));
+    }
+  };
+
+  // #11 — Open in Gamma / NotebookLM with prefilled story
+  const buildSlidesPrompt = (): string => {
+    if (!synthesizedContent) return '';
+    return [
+      `請根據以下 5W1H 故事概念，產生一份 8-10 頁的繁體中文教學簡報：`,
+      ``,
+      `標題：${synthesizedContent.title}`,
+      ``,
+      `誰：${w1hData.who.text}`,
+      `什麼事：${w1hData.what.text}`,
+      `什麼時候：${w1hData.when.text}`,
+      `什麼地方：${w1hData.where.text}`,
+      `為什麼：${w1hData.why.text}`,
+      `如何發生：${w1hData.how.text}`,
+      ``,
+      `故事：`,
+      synthesizedContent.story,
+    ].join('\n');
+  };
+
+  const openInGamma = () => {
+    const prompt = buildSlidesPrompt();
+    const url = `https://gamma.app/create/generate?prompt=${encodeURIComponent(prompt)}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
+    // Also copy to clipboard as backup if Gamma doesn't accept the param
+    navigator.clipboard.writeText(prompt).catch(() => {});
+    toast({ variant: "success", title: "開啟 Gamma 中…", description: "若 Gamma 沒自動帶入，你的故事已複製到剪貼簿。" });
+  };
+
+  const openInNotebookLM = () => {
+    const prompt = buildSlidesPrompt();
+    navigator.clipboard.writeText(prompt).catch(() => {});
+    window.open('https://notebooklm.google.com/', '_blank', 'noopener,noreferrer');
+    toast({ variant: "success", title: "開啟 NotebookLM 中…", description: "故事已複製到剪貼簿，貼到 NotebookLM 即可生成簡報。" });
+  };
+
   useEffect(() => {
     if (synthesizedContent && synthesizedContent.story && synthesizedStoryCardRef.current) {
       requestAnimationFrame(() => {
@@ -642,6 +740,31 @@ export default function InspirationGeneratorClient() {
       toast({ variant: "destructive", title: "複製失敗", description: "無法複製內容，請再試一次。" });
     }
   };
+
+  // #11 — Slides generator dropdown (Gamma / NotebookLM deep links)
+  const SlidesMenu = () => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="生成簡報"
+          title="一鍵生成教學簡報"
+          className="text-primary hover:text-primary/80"
+        >
+          <Presentation className="h-5 w-5" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="min-w-[220px]">
+        <DropdownMenuItem onClick={openInGamma}>
+          ✨ 在 Gamma 開啟（自動帶 prompt）
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={openInNotebookLM}>
+          📓 在 NotebookLM 開啟（手動貼上）
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 
   // CopyMenu must be defined inside component because handleCopy closes over state
   const CopyMenu = ({ onCopy }: { onCopy: (f: CopyFormat) => void }) => (
@@ -782,14 +905,28 @@ export default function InspirationGeneratorClient() {
   return (
     <div className="container mx-auto px-4 py-8">
       <TurnstileWidget ref={turnstileRef} />
+      <ImageUploadDialog
+        open={imageDialogOpen}
+        onOpenChange={setImageDialogOpen}
+        onAnalyze={handleAnalyzeImage}
+        isAnalyzing={isLoading.analyze}
+      />
       <p className="text-center text-lg text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-950/70 p-6 rounded-xl shadow-lg mb-8 max-w-prose mx-auto border border-blue-200 dark:border-blue-800">
         點擊「隨機產生」來獲得靈感，或使用工具「潤飾語法」、「檢查一致性」及「合成內容」來完善您的創意點子！
       </p>
 
-      <div className="flex flex-col sm:flex-row gap-4 mb-6 justify-center flex-wrap">
-        <Button 
-          onClick={handleRandomAll} 
-          disabled={isAnyMainButtonActive || isAnyElementIndividuallyLoading} 
+      <div className="flex flex-col sm:flex-row gap-4 mb-6 justify-center flex-wrap no-print">
+        <Button
+          onClick={() => setImageDialogOpen(true)}
+          disabled={isAnyMainButtonActive || isAnyElementIndividuallyLoading || isLoading.analyze}
+          className="bg-gradient-to-r from-fuchsia-500 to-pink-500 hover:brightness-110 text-white flex-1 sm:flex-none rounded-lg shadow-md text-base h-12"
+        >
+          {isLoading.analyze ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Camera className="mr-2 h-5 w-5" />}
+          看圖編故事
+        </Button>
+        <Button
+          onClick={handleRandomAll}
+          disabled={isAnyMainButtonActive || isAnyElementIndividuallyLoading}
           className="bg-accent hover:bg-accent/90 text-accent-foreground flex-1 sm:flex-none rounded-lg shadow-md text-base h-12"
         >
           {isLoading.randomAll ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Shuffle className="mr-2 h-5 w-5" />}
@@ -964,13 +1101,11 @@ export default function InspirationGeneratorClient() {
                 variant="ghost"
                 size="icon"
                 onClick={() => {
-                  // Skip the typewriter so the printed PDF shows the full story.
                   if (typewriterIntervalRef.current) {
                     clearInterval(typewriterIntervalRef.current);
                     typewriterIntervalRef.current = null;
                   }
                   if (synthesizedContent) setTypewriterIndex(synthesizedContent.story.length);
-                  // requestAnimationFrame so React commits before print dialog opens
                   requestAnimationFrame(() => window.print());
                 }}
                 aria-label="列印 / 匯出 PDF"
@@ -978,6 +1113,20 @@ export default function InspirationGeneratorClient() {
                 className="text-primary hover:text-primary/80"
               >
                 <Printer className="h-5 w-5" />
+              </Button>
+              <SlidesMenu />
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleShareStory}
+                disabled={isLoading.share}
+                aria-label="取得分享連結"
+                title="取得永久分享連結"
+                className="text-primary hover:text-primary/80"
+              >
+                {isLoading.share
+                  ? <Loader2 className="h-5 w-5 animate-spin" />
+                  : <Link2 className="h-5 w-5" />}
               </Button>
               <CopyMenu
                 onCopy={(format) => handleCopySynthesizedStory(synthesizedContent, format)}

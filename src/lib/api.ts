@@ -103,6 +103,44 @@ export interface GrammarImprovementBulkOutput {
 export const grammarImproveBulk = (input: GrammarImprovementBulkInput) =>
   callFunction<GrammarImprovementBulkOutput>('grammarImproveBulk', input);
 
+// ─── Multimodal: image → 5W1H ────────────────────────────────────────
+export interface AnalyzeImageInput {
+  imageDataUrl: string;
+  turnstileToken?: string;
+}
+export interface AnalyzeImageOutput {
+  who: string; what: string; when: string;
+  where: string; why: string; how: string;
+}
+export const analyzeImage = (input: AnalyzeImageInput) =>
+  callFunction<AnalyzeImageOutput>('analyzeImage', input);
+
+// ─── Permanent share links ──────────────────────────────────────────
+export interface SaveStoryInput {
+  title: string;
+  story: string;
+  w1h: { who: string; what: string; when: string; where: string; why: string; how: string };
+  turnstileToken?: string;
+}
+export const saveStory = (input: SaveStoryInput) =>
+  callFunction<{ id: string }>('saveStory', input);
+
+export interface SharedStory {
+  title: string;
+  story: string;
+  w1h: { who: string; what: string; when: string; where: string; why: string; how: string };
+  createdAt: number | null;
+}
+// getStory uses GET with ?id=, not POST. Inline this one.
+export async function getStory(id: string): Promise<SharedStory> {
+  const res = await fetch(`${API_BASE}/getStory?id=${encodeURIComponent(id)}`);
+  const json = await res.json().catch(() => null);
+  if (!res.ok || !json?.success) {
+    throw new Error(json?.error ?? `HTTP ${res.status}`);
+  }
+  return json.data as SharedStory;
+}
+
 export const grammarImprovement = (input: GrammarImprovementInput) =>
   callFunction<GrammarImprovementOutput>('grammarImprove', input);
 
