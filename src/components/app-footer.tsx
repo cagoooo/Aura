@@ -6,7 +6,7 @@ export default function AppFooter() {
     <footer className="bg-slate-100 dark:bg-zinc-900 border-t border-slate-300 dark:border-zinc-700 py-5 mt-auto">
       <div className="container mx-auto px-4 text-center">
         <div className="flex items-center justify-center space-x-2 text-sm">
-          <span className="text-primary font-bold text-base">© 2025</span>
+          <span className="text-primary font-bold text-base">© 2026</span>
           <Link
             href="https://www.smes.tyc.edu.tw/"
             target="_blank"
