@@ -1,317 +1,413 @@
 # 後續優化改良建議
 
-> 給「5W1H 靈感發射器」未來迭代的方向。每一條都附：**為什麼要做、難度、預估工時、收益**，可依優先順序逐項挑選。
+> 給「5W1H 靈感發射器」未來迭代的參考。每一條都附：**為什麼要做、難度、預估工時、收益**，可依優先順序逐項挑選。
 >
-> 最後更新：2026-05-08（路線 B 遷移完成 + bulk endpoint 加速）
+> 最後更新：2026-05-08（4 波部署完成）
 
 ---
 
-## ✅ 已完成（截至 2026-05-08）
+## ✅ 已完成（4 波，22 個主功能）
 
-從原始 OPTIMIZATION.md → 至今實際做掉的項目：
-
-| # | 原項目 | 完成內容 |
+### 🌊 Wave 1 — 基礎遷移與 SaaS 化（路線 B + skill 新增）
+| # | 內容 | 影響 |
 | --- | --- | --- |
-| **架構遷移** | — | 從 Firebase Studio Server Actions → GitHub Pages + Firebase Cloud Functions（路線 B），現址 [https://cagoooo.github.io/Aura/](https://cagoooo.github.io/Aura/) |
-| 1 | Cloudflare Turnstile | 前端 invisible widget + server-side verify（Functions 內），含 race condition 修正（widget readiness）+ token 序列化（FIFO 防 duplicate）|
-| 2 | Cloud Functions 預算上限 | `scripts/setup-budget.ps1` 已備好，可直接跑 |
-| 3 | 音效檔 | `public/sounds/confetti-{short,grand}.mp3` 用 ffmpeg 合成 + repo |
-| 4 | 並行隨機產生 | bulk endpoint + Promise.all → 6-10s 降到 ~3s |
-| 11 | 升級 Gemini 模型 | 2.0-flash 已被 deprecated，升到 **2.5-flash** |
-| **附加 1** | favicon + OG 預覽圖 | 用 `@napi-rs/canvas` + Noto Sans TC subset（138 KB），FB/LINE 卡片中文不變方框，cache-bust 用 `?v=<git-sha>` |
-| **附加 2** | footer-year-update skill | 新建 `~/.claude/skills/footer-year-update`，未來自動掃過期版權年份；同時把 `© 2025` 修成 `© 2026` |
-| **附加 3** | 樂觀 UI（Optimistic UI）| 載入瞬間用 `constants.ts` 預設範例填卡片，AI 結果回來無痛 swap → 0s 感知延遲 |
-| **附加 4** | 完整文件 | `USAGE.md` `MIGRATION.md` `OPTIMIZATION.md`（本檔）|
+| 1 | Server Actions → Firebase Cloud Functions（路線 B 遷移）| 真 serverless，[https://cagoooo.github.io/Aura/](https://cagoooo.github.io/Aura/) 上線 |
+| 2 | Cloudflare Turnstile（前端 widget + server verify + race condition / token 序列化修復）| 防 bot 燒 quota，invisible |
+| 3 | 音效檔 confetti-{short,grand}.mp3（ffmpeg 合成）| 修正既有 bug |
+| 4 | favicon SVG + 4 size PNGs + apple-touch-icon | 瀏覽器標籤頁有 icon |
+| 5 | OG 預覽圖 1200×630（@napi-rs/canvas + Noto Sans TC subset）| LINE/FB 卡片中文不變方框 |
+| 6 | `footer-year-update` skill（新建）| 未來自動掃過期版權年份 |
+| 7 | docs：USAGE.md / MIGRATION.md / OPTIMIZATION.md / 完整 README | 接手友善 |
+
+### 🌊 Wave 2 — 速度與體驗優化（9 items）
+| # | 內容 | 收益 |
+| --- | --- | --- |
+| 8 | bulk endpoint + 樂觀 UI | 初始載入 6-10s → ~3s + 0s 感知延遲 |
+| 9 | 預算上限 NT$100/月 + 4 段警戒 | 防破產 |
+| 10 | 拿掉 `ignoreBuildErrors`（typecheck 0 錯）| 嚴格 TS 防偷渡 |
+| 11 | CI 自動部署 functions（service account + GitHub Secret）| push 自動上線後端 |
+| 12 | bulk 化「潤飾語法」 | 6s → 2-3s |
+| 13 | 合成內容打字機動效（fake stream）| 不無聊 |
+| 14 | 鍵盤快捷鍵（Space/G/C/S/1-6）| 老師熟練超快 |
+| 15 | Onboarding Dialog 5 步驟教學（localStorage flag）| 第一次進來知道怎麼用 |
+| 16 | PDF 列印（window.print + @media print CSS）| 教學現場必備 |
+| 17 | 多格式複製（純文字/Markdown/LINE/W1H-only）| 分享更彈性 |
+
+### 🌊 Wave 3 — 殺手級功能（3 items）
+| # | 內容 | 殺手程度 |
+| --- | --- | --- |
+| 18 | **📷 看圖編故事**（Gemini 2.5 vision 多模態）| ⭐⭐⭐⭐⭐ |
+| 19 | **🎯 一鍵生成簡報**（Gamma + NotebookLM deep links）| ⭐⭐⭐ |
+| 20 | **🔗 永久分享連結**（Firestore + 90 天 TTL + #/s/ hash route）| ⭐⭐⭐⭐ |
+
+### 🌊 Wave 4 — 體驗打磨（4 items）
+| # | 內容 | 細節 |
+| --- | --- | --- |
+| 21 | Skeleton loader 取代 spinner | 3 行 shimmer 模擬「AI 起草中」 |
+| 22 | Stagger 動畫（120ms cascade）| 6 張卡依序變內容，不再 snap |
+| 23 | Cold start 訊息（>1.5s 才顯示）| 第一次按按鈕不冷場 |
+| 24 | SW 版本號自動偵測（version.json polling + sticky toast）| 部署新版 5 分鐘內告知 |
+
+**累計工時**：~12 小時 ｜ **代碼量**：26 個 commit, 30+ 個新檔, 6 個 Cloud Functions, 1 個 Firestore collection
 
 ---
 
-## 🔥 第一波（近期內值得做，總工時 ~2 小時）
+## 🚦 推薦的下一步走法
 
-### 1. 把「潤飾語法」「合成內容」「檢查一致性」也 bulk 化／優化
-**為什麼**：目前 bulk 只用在「初始載入」和「全部隨機」。其他三顆主操作按鈕仍可加速：
-- **潤飾語法**：6 張卡的潤飾仍是循序 6 次 server call，可比照 bulk 模式（新 endpoint `grammarImproveBulk`）
-- **合成內容**：本來就只有 1 次 call，但可以加 streaming（SSE 把 token 流下來），讓使用者看到故事一字一字浮出
-- **檢查一致性**：1 次 call、~2-3 秒，OK 不急
+按優先級排序的 4 個方向（先選 1-2 個，做完再回來看下個）：
 
-**難度**：⭐⭐ ｜**工時**：30~45 分鐘
-**收益**：「潤飾語法」從 ~6s 降到 ~2-3s
+| 方向 | 工時 | 適合什麼時候做 |
+| --- | --- | --- |
+| **A. 教學現場深度**（學習單、課堂模式、語音輸入）| 半天~1天 | 想真正進教室用 |
+| **B. 跨裝置 + 個人帳號**（Firebase Auth + saved drafts）| 一個下午 | 自己用得勤 |
+| **C. 創意風格擴展**（風格切換、擴寫/縮寫、AI 對話迭代）| 一個下午 | 想要「下一波 wow」 |
+| **D. 維運加固**（Sentry、rate limiting、App Check、E2E）| 半天 | 開放給更多老師用之前 |
 
-### 2. 把 functions 的部署也接上 GitHub Actions（自動化）
-**為什麼**：目前 `deploy-functions.yml` 是 `workflow_dispatch` 手動觸發，要改後端就得本機 `firebase deploy`。
-**難度**：⭐⭐⭐ ｜**工時**：30 分鐘
-**做法**：
-1. 建一個 service account 並下載 JSON：
-   ```bash
-   gcloud iam service-accounts create gh-deployer --project=aura-2sg5o --account=ipad@mail2.smes.tyc.edu.tw
-   gcloud projects add-iam-policy-binding aura-2sg5o --member="serviceAccount:gh-deployer@aura-2sg5o.iam.gserviceaccount.com" --role="roles/firebase.admin" --account=ipad@mail2.smes.tyc.edu.tw
-   gcloud projects add-iam-policy-binding aura-2sg5o --member="serviceAccount:gh-deployer@aura-2sg5o.iam.gserviceaccount.com" --role="roles/cloudfunctions.admin" --account=ipad@mail2.smes.tyc.edu.tw
-   gcloud iam service-accounts keys create gh-sa.json --iam-account=gh-deployer@aura-2sg5o.iam.gserviceaccount.com --account=ipad@mail2.smes.tyc.edu.tw
-   ```
-2. `gh secret set FIREBASE_SERVICE_ACCOUNT_AURA --repo=cagoooo/Aura < gh-sa.json`
-3. 立刻 `rm -f gh-sa.json`（**不要 commit / 不要留**）
-4. 修 `.github/workflows/deploy-functions.yml` 加 `on: push: paths: ['functions/**']`
-
-**關聯 skill**：`firebase-stack-automation`、`gcp-api-key-secure-create`（同樣的 stdin pipe 概念）
-
-### 3. 跑預算腳本（防 GCP 帳單異常）
-**為什麼**：Functions 上線了，使用量會增加，沒設預算上限的話被打爆會收錢。
-**難度**：⭐ ｜**工時**：5 分鐘
-**做法**：
-```powershell
-.\scripts\setup-budget.ps1 -ProjectId aura-2sg5o -MonthlyBudgetTWD 100
-```
-> 阿凱老師教學用流量小，月度上限 NT$100 綽綽有餘，超過會 email 警告。
-
-### 4. 把 `next.config.ts` 的 `ignoreBuildErrors: true` 拿掉
-**為什麼**：等於關掉 TypeScript 安全網，未來 bug 會偷溜進 production。
-**難度**：⭐⭐ ｜**工時**：30~60 分鐘
-**做法**：先 `npm run typecheck`，逐一修錯後改 `false`。
+我會用接下來的章節分波列出，但**沒有強制順序** — 你想先做哪個就做哪個。
 
 ---
 
-## ⭐ 第二波（一個下午，提升「教學現場」可用度）
+## 🎓 第五波 · 教學現場深度（2-3 天，最高 ROI）
 
-### 5. 「📖 使用說明」彈窗 onboarding
-**為什麼**：第一次進來的家長、學生不知道「鎖定」「全部隨機」「合成內容」是什麼意思。
-**難度**：⭐⭐ ｜**工時**：30 分鐘
-**做法**：4 步驟教學 Dialog，第一次 visit 自動跳出 + localStorage flag 不再跳。
-**關聯 skill**：`teaching-app-quickstart`
-
-### 6. PDF 匯出（合成完的故事一鍵存檔）
-**為什麼**：教學現場老師很常要把產出印出來貼學生作業簿。
-**難度**：⭐⭐ ｜**工時**：30 分鐘
-**做法**：用 `window.print()` + `@media print` CSS 隱藏非故事區域。**不要用 jsPDF/html2pdf**（中文切半）。
-**關聯 skill**：`pdf-export-print-best-practice`
-
-### 7. 鍵盤快捷鍵
-**為什麼**：老師熟練後想快速操作。
-**難度**：⭐ ｜**工時**：15 分鐘
+### 25. 課堂模式 / Live Mode（投影專用）
+**為什麼**：用投影機投到大螢幕時，目前介面字太小、太多互動細節分心。
+**難度**：⭐⭐ ｜**工時**：1 小時
 **做法**：
-- `Space` 全部隨機
-- `G` 潤飾語法
-- `C` 檢查一致性
-- `S` 合成內容
-- `1-6` 鎖定 / 解鎖對應卡片
+- 加 `?mode=live` 或 `F11` 切換 → 進入「投影模式」
+- 隱藏 floating buttons / header 縮小
+- 字級 +30%、卡片 padding 加大、按鈕變超大
+- 顏色對比度拉高（防投影機褪色）
+- 「全部隨機」自動連發 N 次（給老師 cold open 一節課）
 
-### 8. 「複製到剪貼簿」做進步
-**為什麼**：目前合成完只能複製整段，常用情境包括：
-- 純複製 6 個 W1H（不含合成故事）
-- 複製成 markdown 格式
-- 複製成 LINE 訊息友善排版（emoji 開頭）
-
-**難度**：⭐ ｜**工時**：20 分鐘
-**做法**：在合成卡的 「複製」按鈕旁加 dropdown，列三種格式。
-
-### 9. 內容打字機動效（streaming UI）
-**為什麼**：合成故事 ~5-10s 才回完整，使用者乾等很無聊。
-**難度**：⭐⭐⭐ ｜**工時**：1~2 小時
+### 26. 學習單模式（PDF 模板）
+**為什麼**：老師印出來給學生填，是國小資訊課常見作業形式。
+**難度**：⭐⭐⭐ ｜**工時**：2 小時
 **做法**：
-- Backend: 把 `synthesizeStory` 改成 SSE（Server-Sent Events）endpoint
-- Frontend: `EventSource` 邊收邊 append 文字
-- Genkit 支援 streaming（`generateStream`），改 `runStorySynthesis` 即可
+- 列印按鈕加 dropdown：「列印故事」/ 「列印學習單（空白）」/ 「列印學習單（含答案）」
+- 學習單版本：6 個 W1H 變成空白格 + 學生姓名/座號欄
+- 用 print CSS 控制版面，不依賴 jsPDF
 
----
-
-## 🌱 第三波（殺手級功能，週末投入時）
-
-### 10. 多模態：上傳一張圖片，AI 自動推測 5W1H
-**為什麼**：教學現場「看圖編故事」是經典練習。把圖丟進來、自動填 6 個欄位，學生再修改 → 訓練觀察與想像力。
-**難度**：⭐⭐⭐⭐ ｜**工時**：3~4 小時
+### 27. 班級語音輸入（Web Speech API）
+**為什麼**：學生口頭發想容易，打字速度慢；用嘴巴說出來，文字自動填入卡片。
+**難度**：⭐⭐ ｜**工時**：1 小時
 **做法**：
-- 前端 `<input type="file">` + 圖片壓縮（< 1 MB）
-- Functions 加 `analyzeImage` endpoint，base64 上傳給 Gemini 2.5 Pro
-- prompt 要求 AI 根據圖片直接給 6 個 W1H
-- 結果 prefill 6 張卡，使用者再微調
+- 每張卡片右側加麥克風按鈕
+- `webkitSpeechRecognition` 抓 zh-TW
+- 邊講邊把文字寫進 textarea
+- iPhone Safari 不支援 → fallback 到「按一下、講完、再按一下」模式
 
-### 11. 把產出的故事一鍵丟去 NotebookLM / Gamma 變簡報
-**為什麼**：5W1H 是課堂活動，產出的故事可變成簡報帶到下一節課。
-**難度**：⭐⭐⭐ ｜**工時**：2~3 小時
-**做法**：
-- 「合成內容」結果旁加按鈕「→ 生成簡報」
-- 點擊後把故事 + 6 個 W1H 餵進 NotebookLM API（透過 NotebookLM MCP tools）
-- 自動產出 5-8 張投影片
-**關聯 skill**：`teaching-cockpit`
-
-### 12. 結果存 Firestore + 公開分享頁
-**為什麼**：目前合成完關掉就沒了。產出永久連結 `cagoooo.github.io/Aura/s/abc123` 可以分享給同事/家長。
-**難度**：⭐⭐⭐ ｜**工時**：2~3 小時
-**做法**：
-1. Functions 加 `saveStory` endpoint，存 Firestore（含 TTL 60 天自動清）
-2. Functions 加 `getStory(id)` endpoint
-3. 前端 hash routing `/Aura/#/s/<id>` → fetch + 顯示
-4. 「分享」按鈕產 URL 到剪貼簿
-5. **必加** OG image 動態生成（用 satori / @vercel/og）讓分享卡有預覽
-**關聯 skill**：`og-social-preview-zh`
-
-### 13. 教師後台（`/admin`）
-**為什麼**：老師想看「哪些班級用過、產出了什麼故事、按了幾次合成」，做教學成果報告。
-**難度**：⭐⭐⭐⭐ ｜**工時**：1~2 天
-**做法**：
-- 前端 `/Aura/#/admin` route（Hash routing 因為靜態站）
-- 鎖 Google OAuth + email allowlist（只有 `ipad@mail2.smes.tyc.edu.tw` + 信任老師清單）
-- Firestore 儲存匿名統計（每次合成存個 doc：時間、6 個 W1H、產出長度）
-- Recharts 圖表：每日使用量 / 熱門 W1H 主題 / 平均故事長度
-- **必加**「回主頁」按鈕在顯眼處（admin-route-back-to-home skill 規定）
-**關聯 skill**：`admin-route-back-to-home`、`firebase-admin-password-recovery`
-
-### 14. 跨裝置記憶（Supabase + Google OAuth）
-**為什麼**：在學校電腦做的草稿，回家想繼續編輯但已經消失。
-**難度**：⭐⭐⭐ ｜**工時**：2~3 小時
-**做法**：
-- Google OAuth 登入（用 Supabase Auth 比較簡單）
-- 自動存 6 張卡 + 鎖定狀態 + 最近合成故事到使用者帳號
-- 換裝置打開自動載入
-**關聯 skill**：`supabase-google-oauth-integration`
-
----
-
-## 💎 體驗微調（隨意挑著做）
-
-### 15. Skeleton loader（取代 spinner）
-**為什麼**：目前等 AI 是 spinner 圈圈，不夠像「真的在打字」。
-**做法**：載入時卡片內顯示 skeleton 線條漸進 shimmer 動畫，更像「AI 在想」。
-**工時**：20 分鐘
-
-### 16. AI 結果出現的微動畫
-**為什麼**：bulk 換好後 6 張卡同時 update，畫面突兀。
-**做法**：用 `framer-motion` 或 CSS `animate-in` 讓 6 張卡的 text 換入有 0-300ms 的 stagger 動畫，cascade 式更新。
-**工時**：30 分鐘
-
-### 17. Cold start 友善訊息
-**為什麼**：Functions 冷啟動 1-3 秒，第一次按按鈕等很久但沒回饋。
-**做法**：第一次 call 超過 1 秒就顯示「AI 正在喚醒，第一次比較慢，後續會很快...」這類 toast。
-**工時**：15 分鐘
-
-### 18. 主題切換（兒童 / 文青 / 科技）
-**為什麼**：學生喜歡可換主題增加新鮮感。
-**做法**：用 `next-themes`，預設 5 套配色（藍 / 粉 / 綠 / 黑 / 復古）。
-**工時**：1-2 小時
-
-### 19. A11y（無障礙）強化
-**做法**：
-- 所有 button 都已有 aria-label ✅
-- 卡片整體 + `role="region"` + `aria-labelledby`
-- 撒花動畫尊重 `prefers-reduced-motion`
-- 鎖定狀態用 `aria-pressed` 而非只靠 icon
-
-### 20. PWA + 離線快取
-**為什麼**：上課時若校園網路掉，前端至少還能看到上次內容。
-**做法**：加 service worker（用 `@serwist/next` 或 next-pwa），快取 shell + 上次 6 張卡的 JSON。
-**注意**：要做好 cache-bust 不然每次部署使用者看到舊版（`pwa-cache-bust` skill）。
-**工時**：1-2 小時
-
-### 21. i18n（國際化）
-**為什麼**：5W1H 是普世概念，可推向英語/日語使用者。
-**做法**：
-- 用 `next-intl`，把 `constants.ts` 的 options 拆成 `zh-tw.json` / `en.json` / `ja.json`
-- prompt 也要切（不然 AI 永遠回中文）
-- 加語言切換器
-**工時**：3-4 小時
-
----
-
-## 🛡️ 安全 / 維運 / SEO（不性感但很重要）
-
-### 22. Firebase App Check
-**為什麼**：Turnstile 擋人類偽裝的 bot，App Check 鎖死「只有我的 web 站能 call functions」。雙保險。
+### 28. AI 點評學生作答
+**為什麼**：學生填完自己的 5W1H → AI 給創意/邏輯/語法回饋 → 老師教學減負擔。
 **難度**：⭐⭐⭐ ｜**工時**：1 小時
 **做法**：
-- Firebase Console → App Check → 註冊網站，啟用 reCAPTCHA Enterprise（或重複用 Turnstile）
-- Functions `onRequest` 改加 `enforceAppCheck: true`
-- 前端 SDK `initializeAppCheck`
+- 新 endpoint `evaluateStudentWork({ w1h })` → 回 `{ creativity: 7/10, logic: 8/10, grammar: 9/10, feedback: "..." }`
+- 卡片下方多一顆「📝 請 AI 點評」按鈕
+- 結果用 Recharts 雷達圖顯示
 
-### 23. LINE 警報（出錯通知到我手機）
-**為什麼**：站掛了 / Quota 爆了沒人會發現，等家長回報太晚。
+### 29. 對齊九年一貫課綱
+**為什麼**：教育部每階段語文目標不同，AI 可以差異化生成。
+**難度**：⭐⭐ ｜**工時**：1 小時
+**做法**：
+- 設定下拉選單「年級」：低年級 / 中年級 / 高年級 / 國中
+- 不同年級切換不同 system prompt（用詞難度、句長、文化內涵）
+- 預設 = 中年級（國小四年級）
+
+### 30. 班級廣播（多人同步檢視）
+**為什麼**：老師分享連結 → 全班同時打開 → 老師按「Sync」→ 學生螢幕一起跳到同一張 → 像簡報但是互動式。
+**難度**：⭐⭐⭐⭐ ｜**工時**：1 天
+**做法**：
+- Firestore realtime 監聽
+- 老師端「廣播模式」按鈕，學生端進入後自動追隨
+- 簡單做：透過 hash URL `?room=abc123` 加入廣播間
+
+---
+
+## 🔐 第六波 · 個人帳號 + 跨裝置（一個下午）
+
+### 31. Firebase Auth + saved drafts
+**為什麼**：在學校做的草稿，回家想繼續編輯但已經沒了。**用 Firebase Auth 比 Supabase 簡單**（已是 Firebase 生態）。
+**難度**：⭐⭐⭐ ｜**工時**：3-4 小時
+**做法**：
+- Firebase Auth + Google one-tap 登入
+- 每位 user 雲端存最後 N 個 drafts（卡片 + 最近合成）
+- 自動同步當前 6 張卡狀態（debounce 5 秒）
+- 換裝置打開自動載入
+- 已經有 Firestore 設好，直接加 `users/{uid}/drafts/{id}` 結構
+
+### 32. 個人故事庫（Personal Story Library）
+**為什麼**：合成過的故事希望永久收藏，可以回顧。
+**難度**：⭐⭐ ｜**工時**：2 小時
+**做法**：
+- 登入後加「我的故事」抽屜
+- 列出歷史合成的故事（標題 + 日期）
+- 點擊回填到主畫面繼續編輯
+- 建立在 #31 之上
+
+### 33. 公開故事 Hall of Fame（社群感）
+**為什麼**：使用者按「公開」可以讓故事進入瀏覽頁，建立社群感、增加用戶停留。
+**難度**：⭐⭐⭐ ｜**工時**：3 小時
+**做法**：
+- 分享連結加 checkbox「公開到瀏覽頁」
+- 新 route `/Aura/#/discover` 列出最近 50 個公開故事
+- 加按讚 / 收藏功能（無登入也能按）
+- 老師審核機制（你 own admin role 看得到「下架」按鈕）
+
+---
+
+## ✨ 第七波 · 創意內容擴展（一個下午）
+
+### 34. 風格切換器（武俠 / 科幻 / 童話 / 推理）
+**為什麼**：教學主題會輪換 — 上週上童話，這週上推理 — 內容風格不同會更帶感。
+**難度**：⭐⭐ ｜**工時**：1 小時
+**做法**：
+- toolbar 加 dropdown「風格」：自由 / 童話 / 武俠 / 科幻 / 推理 / 校園 / 民間
+- 6 個 W1H 的 prompt 都加風格 hint
+- 預設值「自由」=現有行為
+
+### 35. 故事擴寫 / 縮寫
+**為什麼**：合成完故事，老師想要「擴寫成 5 倍長」當教材，或「縮寫成 100 字」當摘要練習。
+**難度**：⭐⭐ ｜**工時**：1 小時
+**做法**：
+- 故事卡上加「擴寫 ↗」「縮寫 ↘」兩顆按鈕
+- 新 endpoint `rewriteStory({ originalStory, mode: 'expand' | 'compress', targetWordCount })`
+- 用既有 typewriter UI 漸顯結果
+
+### 36. AI 對話迭代（"make it darker"）
+**為什麼**：合成完故事不滿意？想要「更黑暗」「換成第一人稱」「加個轉折」。
+**難度**：⭐⭐⭐ ｜**工時**：2-3 小時
+**做法**：
+- 故事卡下加 chatbox：「請給我一個更 ___ 的版本」
+- 新 endpoint `iterateStory({ currentStory, instruction })`
+- 結果取代既有故事 + 保留歷史版本可回滾
+
+### 37. 多圖串故事
+**為什麼**：上傳 2-3 張圖 → AI 串成連續分場故事，做漫畫腳本超適合。
+**難度**：⭐⭐⭐ ｜**工時**：2 小時
+**做法**：
+- 圖片上傳對話框改可選多張
+- analyzeImage 改 multi-image，每張對應一個「場景」
+- 6 W1H 由多場景共同決定主角/事件/動機
+
+### 38. Imagen 故事插圖（Gemini 圖片生成）
+**為什麼**：合成完故事，產 4 張對應場景的插圖 → 國小美術課可直接用。
+**難度**：⭐⭐⭐⭐ ｜**工時**：3-4 小時
+**做法**：
+- Gemini 2.5 Flash Image / Imagen 3 API
+- 新 endpoint `illustrateStory({ story, sceneCount: 4 })`
+- 結果 4 張圖排版做「故事板」（三段式：開頭 / 高潮 / 結尾）
+- ⚠️ Imagen 需 Vertex AI，計費另算，先估 quota
+
+---
+
+## 🛡️ 第八波 · 維運加固（半天，開放更多老師用之前必做）
+
+### 39. Sentry 錯誤回報
+**為什麼**：使用者出問題不會主動回報；Sentry 會自動收集 stack trace + replay。
 **難度**：⭐⭐ ｜**工時**：30 分鐘
 **做法**：
-- Functions 內 catch 重大 error → 推到 LINE 個人帳號
-- 阿凱老師的 LINE Bot ID 設成環境變數
-**關聯 skill**：`line-messaging-firebase`
+- 註冊 Sentry 免費帳號（5K events/月）
+- `npm install @sentry/nextjs` + `@sentry/serverless`（functions 端）
+- 每個 catch error 都自動回報
 
-### 24. SEO + sitemap
-**為什麼**：搜「5W1H 靈感」希望排前面。
+### 40. Rate limiting per IP（防個別人燒 quota）
+**為什麼**：Turnstile 擋 bot，但人類使用者可能無聊一直按。設個 IP 限額穩妥。
+**難度**：⭐⭐ ｜**工時**：1 小時
 **做法**：
-- Next.js metadata 已做 ✅
-- 加 `app/sitemap.ts` 自動產出 `sitemap.xml`
-- 加 `app/robots.ts`（允許 GoogleBot、bingbot；擋 GPTBot、ClaudeBot 隨意）
-- 提交 [Google Search Console](https://search.google.com/search-console)
+- Functions 內用 in-memory LRU cache（同一 instance 內共享）
+- 每 IP 每分鐘最多 30 次 call、每天最多 500 次
+- 超限回 429 + retry-after header
+
+### 41. Firebase App Check
+**為什麼**：再加一層「只有 cagoooo.github.io 能 call functions」鎖。雙保險。
+**難度**：⭐⭐⭐ ｜**工時**：1 小時
+**做法**：
+- App Check + reCAPTCHA Enterprise（或重複用 Turnstile）
+- Functions `enforceAppCheck: true`
+- 前端 SDK `initializeAppCheck`
+
+### 42. LINE 警報（出錯通知到我手機）
+**為什麼**：站掛了 / Quota 爆了沒人會發現。
+**難度**：⭐⭐ ｜**工時**：30 分鐘
+**做法**：
+- Functions catch 重大 error → 推到 LINE 個人帳號
+- 整合 line-messaging-firebase skill
+
+### 43. Lighthouse CI
+**為什麼**：performance / a11y 退化要擋 PR merge。
+**難度**：⭐⭐ ｜**工時**：30 分鐘
+**做法**：
+- GitHub Actions 加 `lhci/cli`
+- assertions：performance > 80, a11y > 90, best-practices > 90, seo > 90
+- 退化的 PR 自動 fail
+
+### 44. Playwright E2E 測試
+**為什麼**：5 個關鍵流程（初始載入 / 合成 / 分享 / 看圖 / 打開分享連結）跑通才能 deploy。
+**難度**：⭐⭐⭐ ｜**工時**：2 小時
+**做法**：
+- `npm install -D @playwright/test`
+- 寫 5 個 spec
+- GitHub Actions deploy 前先跑
+
+---
+
+## 💎 第九波 · 細節打磨（隨意挑著做）
+
+### 45. 主題切換 + dark mode（next-themes）
+**為什麼**：學生喜歡換主題增加新鮮感。
+**工時**：1-2 小時
+
+### 46. A11y 強化
+- 卡片加 `role="region"` + `aria-labelledby`
+- 撒花尊重 `prefers-reduced-motion`
+- 鎖定狀態用 `aria-pressed`
+- 鍵盤焦點環優化
+**工時**：1 小時
+
+### 47. SEO + sitemap
+- `app/sitemap.ts` + `app/robots.ts`
+- 提交 Google Search Console
 **工時**：30 分鐘
 
-### 25. Analytics（隱私友善）
-**為什麼**：知道有沒有人在用、用什麼功能最多 → 教學決策。
-**做法**：
-- 用 [Plausible](https://plausible.io) / [Umami](https://umami.is)（不像 GA 會跟蹤使用者）
-- 一個 `<script>` 標籤就好，不裝 cookie
-- 看每日 PV / 哪個按鈕點最多
+### 48. Plausible / Umami analytics
+- 知道有沒有人在用
 **工時**：15 分鐘
 
-### 26. README / GitHub Pages 加完整介紹
-**為什麼**：repo 是公開的，目前 README 只有 Firebase Studio 的 boilerplate。
-**做法**：
-- Banner 圖（拿 OG 圖直接用）
-- 「線上 Demo」連結置頂
-- 教學目標、適用年級、課堂使用情境
-- LICENSE（建議 MIT 或 CC-BY-NC 教學用）
+### 49. Drag & drop 圖片上傳
 **工時**：30 分鐘
+
+### 50. Cmd+V 貼上圖片（從剪貼簿）
+**工時**：30 分鐘
+
+### 51. Sonner toast 取代既有 shadcn toast
+- 動畫更現代
+**工時**：1 小時
+
+### 52. 真 Service Worker（offline-first）
+- 不只 polling 偵測新版，加 cache shell + 上次內容
+- 沒網路也能看上次合成
+- ⚠️ SW 雷區多，搭配 `pwa-cache-bust` skill 才不會卡死
+**工時**：3-4 小時
+
+### 53. README 完整介紹（已被多次提及）
+- Banner / Demo 連結 / 課堂使用情境 / LICENSE
+**工時**：30 分鐘
+
+---
+
+## 🌐 第十波 · 平台延伸（投資型，每項 1 天+）
+
+### 54. iOS / Android App
+- Capacitor 包裝既有網站（最快）
+- 還是 React Native 重寫（最自然）
+- App Store / Play Store 上架手續
+
+### 55. LINE Bot 版
+- 在 LINE 內聊「靈感」→ 跳出 5W1H 卡片
+- 結合 line-messaging-firebase skill
+
+### 56. Chrome Extension
+- 在任何網頁右鍵「為這段文字產生 5W1H」
+- popup 嵌入既有 widget
+
+### 57. 學校網站嵌入元件
+- 提供 `<iframe>` / Web Component 版本，其他老師可以嵌進自己的教學網站
 
 ---
 
 ## 📊 一頁式優先順序總表（依價值/工時比排序）
 
-| # | 項目 | 優先級 | 工時 | 一句話 |
+| # | 項目 | 優先級 | 工時 | 收益 |
 | --- | --- | --- | --- | --- |
-| 3 | 跑預算腳本 | 🔥 P0 | 5 min | 防破產 |
-| 7 | 鍵盤快捷鍵 | ⭐ P1 | 15 min | 老師熟練後超有感 |
-| 25 | Plausible analytics | 🔥 P0 | 15 min | 知道有沒有人在用 |
-| 17 | Cold start 友善訊息 | ⭐ P1 | 15 min | 第一次點不要冷場 |
-| 5 | 使用說明彈窗 | ⭐ P1 | 30 min | 新使用者體驗 |
-| 6 | PDF 匯出 | ⭐ P1 | 30 min | 教學現場必備 |
-| 8 | 多格式複製 | ⭐ P1 | 20 min | 分享更方便 |
-| 23 | LINE 出錯警報 | ⭐ P1 | 30 min | 站掛了立刻知道 |
-| 1 | bulk 化潤飾語法 | ⭐ P1 | 45 min | 從 6s 降到 2-3s |
-| 24 | SEO sitemap | ⭐ P1 | 30 min | Google 搜尋找得到 |
-| 26 | README 完整介紹 | ⭐ P1 | 30 min | 公開 repo 第一印象 |
-| 2 | GitHub Actions 自動部署 functions | ⭐ P1 | 30 min | 後端改完自動上線 |
-| 4 | 拿掉 ignoreBuildErrors | ⭐ P1 | 30~60 min | 防 bug 偷溜上線 |
-| 9 | 故事打字機動效 | ⭐ P2 | 1~2 hr | 合成過程不無聊 |
-| 22 | Firebase App Check | ⭐ P2 | 1 hr | 雙重防爆 |
-| 10 | 看圖編故事（多模態）| 🌱 P2 | 3~4 hr | 殺手級功能 |
-| 11 | 一鍵生成簡報 | 🌱 P2 | 2~3 hr | 教學鏈無縫接軌 |
-| 12 | 故事永久連結 + OG | 🌱 P2 | 2~3 hr | 分享給家長/同事 |
-| 14 | 跨裝置記憶 | 🌱 P2 | 2~3 hr | 學校 / 家裡同步 |
-| 13 | 教師後台 + 統計 | 🌱 P2 | 1~2 day | 教學成果報告 |
-| 21 | i18n 多語 | 🌱 P3 | 3~4 hr | 推向國際 |
+| 48 | Plausible analytics | 🔥 P0 | 15 min | 知道有沒有人用 |
+| 25 | 課堂模式（投影專用）| 🔥 P0 | 1 hr | 教學現場立刻有感 |
+| 27 | 語音輸入卡片 | 🔥 P0 | 1 hr | 學生用起來超方便 |
+| 39 | Sentry 錯誤回報 | 🔥 P0 | 30 min | 出事第一時間知道 |
+| 42 | LINE 警報 | 🔥 P0 | 30 min | 站掛了立刻通知 |
+| 34 | 風格切換器 | ⭐ P1 | 1 hr | 同樣教材新鮮感 |
+| 35 | 故事擴寫 / 縮寫 | ⭐ P1 | 1 hr | 教材彈性 |
+| 29 | 對齊九年一貫 | ⭐ P1 | 1 hr | 課堂專業度 |
+| 28 | AI 點評學生作答 | ⭐ P1 | 1 hr | 教學減負擔 |
+| 47 | SEO sitemap | ⭐ P1 | 30 min | Google 找得到 |
+| 53 | README 完整介紹 | ⭐ P1 | 30 min | 公開 repo 第一印象 |
+| 31 | Firebase Auth + saved drafts | ⭐ P1 | 3-4 hr | 跨裝置同步 |
+| 26 | 學習單模式 | ⭐ P1 | 2 hr | 國小作業必備 |
+| 36 | AI 對話迭代 | ⭐ P2 | 2-3 hr | 重新感受 AI |
+| 37 | 多圖串故事 | ⭐ P2 | 2 hr | 漫畫腳本利器 |
+| 33 | 公開 Hall of Fame | ⭐ P2 | 3 hr | 社群感 |
+| 32 | 個人故事庫 | ⭐ P2 | 2 hr | 配合 #31 |
+| 41 | App Check | ⭐ P2 | 1 hr | 雙保險 |
+| 40 | Rate limiting | ⭐ P2 | 1 hr | 防個別濫用 |
+| 38 | Imagen 插圖 | 🌱 P2 | 3-4 hr | 美術課利器 |
+| 30 | 班級廣播 | 🌱 P2 | 1 day | 課堂同步 |
+| 52 | 真 SW offline | 🌱 P2 | 3-4 hr | 離線可用 |
+| 44 | Playwright E2E | 🌱 P3 | 2 hr | 防 regression |
+| 43 | Lighthouse CI | 🌱 P3 | 30 min | 防退化 |
+| 45 | 主題切換 dark mode | 💎 隨興 | 1-2 hr | 新鮮感 |
+| 51 | Sonner toast | 💎 隨興 | 1 hr | 動畫升級 |
+| 49 | Drag-drop 上傳 | 💎 隨興 | 30 min | 體驗微調 |
+| 50 | Cmd+V 貼圖 | 💎 隨興 | 30 min | 體驗微調 |
+| 54 | iOS / Android App | 🌐 投資 | 1+ 天 | 平台擴張 |
+| 55 | LINE Bot | 🌐 投資 | 1 天 | 平台擴張 |
+| 56 | Chrome Extension | 🌐 投資 | 1 天 | 平台擴張 |
 
 ---
 
-## 🚦 我建議的下一步走法
+## 🚦 給阿凱老師的 4 種 weekend 套餐
 
-**第 1 週（今晚~這週末，~3 小時）**：
-- #3（5 min）→ #7（15 min）→ #25（15 min）→ #5（30 min）→ #6（30 min）→ #1（45 min）
-- 一個下午能爽爽做完，網站從「能用」變成「老師喜歡用」
+**🎯 套餐 A（教學現場立刻爽，半天）**
+#48 → #25 → #27 → #34 → #29
+快速分析統計上線 → 課堂模式 → 語音輸入 → 風格切換 → 課綱對齊
+✅ 下週上課就能直接用，學生有感
 
-**第 2 週（深入打磨，~2 小時）**：
-- #2（30 min）→ #4（60 min）→ #23（30 min）
-- 開發體驗 + 維運穩定度都拉到 production-grade
+**🎯 套餐 B（個人帳號生態，一個下午）**
+#31 → #32 → #33
+登入 → 雲端 saved drafts → 公開瀏覽頁
+✅ 從「玩具」變「平台」
 
-**第 3 週（殺手鐧開始長出，~5 小時）**：
-- #10（3-4 hr）一個 weekend 做掉看圖編故事
-- 配合 #11 把產出鏈到簡報，整個教學流程閉環
+**🎯 套餐 C（創意 wow factor，一個下午）**
+#36 → #34 → #35 → #37
+AI 對話迭代 → 風格切換 → 擴寫縮寫 → 多圖串故事
+✅ 4 個新 wow，足夠拿出去 demo
 
-**第 4 週以後**：
-- #12 / #13 / #14 看實際使用反饋再決定
-- 如果家長 / 學生開始大量使用 → 才需要做後台統計
-
-每一波都很 modular，可以隨意跳號或暫停，不影響網站運作。
+**🎯 套餐 D（維運生產等級，半天）**
+#39 → #42 → #40 → #41
+Sentry → LINE 警報 → Rate limit → App Check
+✅ 開放給其他老師用之前的安全閘門
 
 ---
 
-## 💡 從這次 4 小時遷移實戰學到的心得（給未來的自己）
+## 💡 從這次 12 小時 marathon 學到的（給未來的我）
 
-1. **路線 A vs 路線 B 永遠先勸退 B**：除非真的需要 `cagoooo.github.io` URL，App Hosting 一鍵搞定 90% 場景
-2. **Turnstile 序列化是必須的**：v2 widget 共用 token 是隱蔽的雷，必須有 FIFO queue + readyPromise
-3. **bulk endpoint > 個別 endpoint**：6 個獨立 call 永遠比 1 個 bulk call 慢 + 燒更多 quota
-4. **樂觀 UI 是免費的速度**：先填預設、AI 來再 swap，0s 感知優於任何 spinner 設計
-5. **Gemini 模型棄用週期短**：每 6-12 月就會棄用一個 model name，要監控 `gemini-api-integration` skill
-6. **System reminder 也算 leak**：寫 secret 進 .env.local 會被自動 file-modified diff 帶到 chat → 真要安全直接 user 自己貼 (skill `gcp-api-key-secure-create` 還可以再強化)
-7. **每年 1 月 footer 都會被忘記**：所以才有 `footer-year-update` skill
+**架構選型**
+1. 路線 A vs B 真的要先勸退 B（如同 skill 提醒）— 但既然做了 B，剩下的擴展都好做
+2. **不要太早做真 Service Worker** — version.json polling 是 GitHub Pages 的最佳折衷
+3. **bulk endpoint > 個別 endpoint** — 同樣的事 1/3 時間 + 1/6 quota
+4. **樂觀 UI 是免費的速度** — 永遠先填預設、AI 來再 swap
+
+**安全 / Secret 管理**
+5. **System reminder 也算 leak 通道** — 寫 secret 進 .env.local 會被 file-modified diff 帶到 chat（gcp-api-key-secure-create skill 應該強化此警告）
+6. **stdin pipe 是 secret 移動唯一安全方式** — 任何中間 echo 都是風險
+7. **每個 API key 一個用途** — 一個出事不會全炸
+
+**前端模式**
+8. **stagger > 同步 update** — bulk 結果 6 張卡同時 snap 視覺感很差，120ms cascade 立刻變優雅
+9. **skeleton > spinner** — 模擬「AI 在思考」比 loading 圈圈更可信
+10. **typewriter 不需要真 streaming** — 拿到全部結果後 setTimeout 假打字 80% 體驗、5% 工時
+
+**Cloud Functions 雷**
+11. **第一次部署多個 v2 function 會 race** — 預期 3-4 個會 503，要重試
+12. **新 Function 必須 `gcloud run services add-iam-policy-binding ... allUsers run.invoker`** — 否則 403
+13. **firebase-admin v12 → v13 才解 google-cloud/firestore peer dep**
+14. **CI 嚴格 TS 模式會掃 functions/** — root tsconfig 要 exclude
+
+**Gemini / AI**
+15. **gemini-2.0-flash 已 deprecated**（2026-04 消失）— 升 2.5
+16. **multimodal `ai.generate({prompt:[{text},{media}]})` 簡單** — 不用學新 API
+17. **prompt 要明確說「不要描述圖片，要創作故事」** — 不然 AI 會回「一隻貓在沙發」
+
+**部署 / DevOps**
+18. **gcloud beta budgets 幣別必須 match billing account**（aura 是 TWD 不是 USD）
+19. **PowerShell .ps1 中文檔沒 BOM 會被 Big5 解析炸** — 別放中文進 ps1，或加 BOM
+20. **每次 `npm uninstall` 都要 `rm -rf node_modules package-lock.json` 才乾淨** — Cloud Build 上會踩到
+
+**結論**：這 12 小時的部署 + 4 波優化，從「能跑」走到了「production-grade SaaS」。剩下的功能都是 nice-to-have，可以慢慢加。
