@@ -84,6 +84,8 @@ type SaveStoryInput = {
   story: string;
   w1h: SharedW1H;
   turnstileToken?: string;
+  isPublic?: boolean;       // #33 Hall of Fame opt-in
+  ownerName?: string;       // shown on the public listing
 };
 
 const SHORT_ID_LEN = 10;
@@ -130,6 +132,8 @@ export const saveStory = onRequest(
           w1h: input.w1h,
           createdAt: Timestamp.now(),
           expiresAt,
+          isPublic: input.isPublic === true,
+          ownerName: input.ownerName?.slice(0, 50) || null,
         });
         id = candidate;
         break;

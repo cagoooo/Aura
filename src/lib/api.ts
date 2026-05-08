@@ -145,6 +145,8 @@ export interface SaveStoryInput {
   turnstileToken?: string;
   style?: StoryStyle;
   gradeLevel?: GradeLevel;
+  isPublic?: boolean;
+  ownerName?: string;
 }
 export const saveStory = (input: SaveStoryInput) =>
   callFunction<{ id: string }>('saveStory', input);

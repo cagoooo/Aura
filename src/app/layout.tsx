@@ -9,6 +9,7 @@ import FloatingAdButton from '@/components/floating-ad-button';
 import FloatingAssistantButton from '@/components/floating-assistant-button';
 import OnboardingDialog from '@/components/onboarding-dialog';
 import VersionWatcher from '@/components/version-watcher';
+import { AuthProvider } from '@/components/auth-provider';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -83,14 +84,15 @@ export default function RootLayout({
   return (
     <html lang="zh-TW" className="flex flex-col min-h-screen">
       <body className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased flex flex-col flex-grow`}>
-        <AppHeader />
-        <main className="flex-grow">{children}</main>
-        <AppFooter />
-        <FloatingAdButton />
-        <FloatingAssistantButton />
-        <OnboardingDialog />
-        <VersionWatcher />
-        <Toaster />
+        <AuthProvider>
+          <AppHeader />
+          <main className="flex-grow">{children}</main>
+          <AppFooter />
+          <FloatingAdButton />
+          <FloatingAssistantButton />
+          <OnboardingDialog />
+          <VersionWatcher />
+          <Toaster />
         {/*
           Cloudflare Web Analytics — privacy-respecting, no cookies, free.
           Set NEXT_PUBLIC_CF_ANALYTICS_TOKEN as a GitHub Secret to enable.
@@ -105,6 +107,7 @@ export default function RootLayout({
             data-cf-beacon={`{"token": "${process.env.NEXT_PUBLIC_CF_ANALYTICS_TOKEN}"}`}
           />
         )}
+        </AuthProvider>
       </body>
     </html>
   );

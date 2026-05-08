@@ -1,10 +1,11 @@
 "use client";
 
-import { Lightbulb, HelpCircle } from 'lucide-react';
+import { Lightbulb, HelpCircle, Globe } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { useAppSettings } from '@/hooks/use-app-settings';
 import SettingsPopover from '@/components/settings-popover';
+import AuthMenu from '@/components/auth-menu';
 import { useEffect } from 'react';
 
 const ONBOARDING_STORAGE_KEY = 'aura.onboarding.v1.dismissed';
@@ -42,6 +43,14 @@ export default function AppHeader() {
           </span>
         </Link>
         <div className="absolute right-2 sm:right-4 flex items-center gap-1">
+          <Link
+            href={`${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}/#/discover`}
+            aria-label="瀏覽公開故事 Hall of Fame"
+            className="inline-flex items-center justify-center h-9 w-9 sm:w-auto sm:px-3 rounded-md hover:bg-accent/30 text-muted-foreground hover:text-primary transition-colors"
+          >
+            <Globe className="h-5 w-5 sm:mr-1" />
+            <span className="hidden sm:inline text-sm font-medium">瀏覽</span>
+          </Link>
           {hydrated && (
             <SettingsPopover
               style={settings.style}
@@ -62,6 +71,7 @@ export default function AppHeader() {
             <HelpCircle className="h-5 w-5 sm:mr-1" />
             <span className="hidden sm:inline">使用說明</span>
           </Button>
+          <AuthMenu onOpenLibrary={() => window.dispatchEvent(new CustomEvent('aura:open-library'))} />
         </div>
       </div>
     </header>

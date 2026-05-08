@@ -43,6 +43,11 @@ jobs:
           NEXT_PUBLIC_BUILD_ID: ${{ github.sha }}
           # Cloudflare Web Analytics (optional — empty = disabled)
           NEXT_PUBLIC_CF_ANALYTICS_TOKEN: ${{ secrets.CF_ANALYTICS_TOKEN }}
+          # Firebase Web SDK config (public keys, designed to be in bundle)
+          NEXT_PUBLIC_FB_API_KEY: ${{ secrets.FB_API_KEY }}
+          NEXT_PUBLIC_FB_AUTH_DOMAIN: ${{ secrets.FB_AUTH_DOMAIN }}
+          NEXT_PUBLIC_FB_PROJECT_ID: ${{ secrets.FB_PROJECT_ID }}
+          NEXT_PUBLIC_FB_APP_ID: ${{ secrets.FB_APP_ID }}
         run: npm run build
 
       - name: Add .nojekyll

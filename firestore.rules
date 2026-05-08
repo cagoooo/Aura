@@ -1,10 +1,28 @@
 rules_version = '2';
 
-// All client reads/writes denied. Stories are written + read only via
-// Cloud Functions (which use Admin SDK and bypass rules). This is the
-// safest pattern: clients never talk to Firestore directly.
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // ─── User-private data ───────────────────────────────────────
+    // - draft: singleton holding the user's last-edited 6 W1H state
+    // - stories/*: each saved synthesized story (their personal library)
+    // Only the owner can read/write. No multi-user shared docs here.
+    match /users/{uid}/{collection=**} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // ─── Public-shared stories ──────────────────────────────────
+    // Writes go through Cloud Functions (admin SDK bypasses rules).
+    // Reads:
+    //   - getStory(id) endpoint reads via admin SDK regardless of isPublic
+    //   - Direct client reads only allowed if the doc is marked isPublic
+    //     (used by the Discover / Hall of Fame page list view)
+    match /sharedStories/{id} {
+      allow read: if resource.data.isPublic == true;
+      allow write: if false;  // Cloud Functions only
+    }
+
+    // ─── Default deny ───────────────────────────────────────────
     match /{document=**} {
       allow read, write: if false;
     }

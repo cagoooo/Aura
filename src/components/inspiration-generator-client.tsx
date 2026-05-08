@@ -19,8 +19,11 @@ import {
 } from '@/lib/api';
 import ImageUploadDialog from '@/components/image-upload-dialog';
 import ShareLinkDialog from '@/components/share-link-dialog';
+import LibraryDrawer from '@/components/library-drawer';
 import { useSpeechRecognition } from '@/hooks/use-speech-recognition';
 import { useAppSettings } from '@/hooks/use-app-settings';
+import { useAuth } from '@/components/auth-provider';
+import { loadDraft, saveDraft, saveStoryToLibrary, type SavedStory } from '@/lib/firebase-client';
 import { Loader2, CheckCircle2, Shuffle, BookText, Copy, FileText, Check, ThumbsUp, Wand2, Printer, ChevronDown, Camera, Presentation, Share2, Link2 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
@@ -156,6 +159,13 @@ export default function InspirationGeneratorClient() {
 
   const [imageDialogOpen, setImageDialogOpen] = useState(false);
   const [shareDialogUrl, setShareDialogUrl] = useState<string | null>(null);
+  const [sharePreSaveOpen, setSharePreSaveOpen] = useState(false);
+  const [libraryOpen, setLibraryOpen] = useState(false);
+  // Track whether the user just loaded a draft, to avoid the auto-saved
+  // draft loop firing during the initial restoration commit.
+  const draftHydratedRef = useRef(false);
+
+  const { user, configured: authConfigured } = useAuth();
 
   const [randomAllProgress, setRandomAllProgress] = useState(0);
   const [grammarProgress, setGrammarProgress] = useState(0);
@@ -575,6 +585,18 @@ export default function InspirationGeneratorClient() {
       storyCardKey.current += 1; 
 
       if (result && result.story && result.title && !errorTitles.includes(result.title)) {
+        // #32 Auto-save to personal library if logged in
+        if (authConfigured && user) {
+          saveStoryToLibrary(user.uid, {
+            title: result.title,
+            story: result.story,
+            w1h: {
+              who: w1hData.who.text, what: w1hData.what.text,
+              when: w1hData.when.text, where: w1hData.where.text,
+              why: w1hData.why.text, how: w1hData.how.text,
+            },
+          }).catch(e => console.warn('Library save failed:', e));
+        }
         // Start typewriter animation: ~3 chars per 30ms tick → 6-8s for typical
         // story length. Feels like AI is "thinking and writing".
         if (typewriterIntervalRef.current) clearInterval(typewriterIntervalRef.current);
@@ -621,6 +643,75 @@ export default function InspirationGeneratorClient() {
     }
   };
 
+  // ─── #31 Auto-saved draft (logged-in users) ─────────────────────────
+  // On login: load latest draft from Firestore and prefill cards.
+  useEffect(() => {
+    if (!authConfigured || !user) {
+      draftHydratedRef.current = false;
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const draft = await loadDraft(user.uid);
+        if (cancelled || !draft) {
+          draftHydratedRef.current = true;
+          return;
+        }
+        // Restore cards from draft
+        setW1hData(prev => {
+          const next = { ...prev };
+          for (const k of ALL_W1H_KEYS) {
+            const text = draft.w1h[k];
+            const isLocked = !!draft.locks?.[k];
+            if (typeof text === 'string') next[k] = { text, isLocked };
+          }
+          return next;
+        });
+        toast({ variant: "success", title: "📂 已載入上次草稿", description: "從你上次的進度繼續編輯。" });
+      } catch (e) {
+        console.warn('Draft load failed (rules / network):', e);
+      } finally {
+        // mark hydrated either way so save effect can resume
+        setTimeout(() => { draftHydratedRef.current = true; }, 200);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [authConfigured, user]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-save draft (debounced 1.5s) on w1hData change
+  useEffect(() => {
+    if (!authConfigured || !user || !draftHydratedRef.current) return;
+    const handle = setTimeout(() => {
+      const w1h = ALL_W1H_KEYS.reduce((acc, k) => ({ ...acc, [k]: w1hData[k].text }), {} as any);
+      const locks = ALL_W1H_KEYS.reduce((acc, k) => ({ ...acc, [k]: w1hData[k].isLocked }), {} as any);
+      saveDraft(user.uid, { w1h, locks }).catch(e => console.warn('Draft save failed:', e));
+    }, 1500);
+    return () => clearTimeout(handle);
+  }, [w1hData, authConfigured, user]);
+
+  // Listen for "open library" event from header AuthMenu
+  useEffect(() => {
+    const open = () => setLibraryOpen(true);
+    window.addEventListener('aura:open-library', open);
+    return () => window.removeEventListener('aura:open-library', open);
+  }, []);
+
+  // Load a story from library back into the main UI
+  const handleLoadFromLibrary = (story: SavedStory) => {
+    setW1hData(prev => {
+      const next = { ...prev };
+      for (const k of ALL_W1H_KEYS) {
+        const text = story.w1h[k];
+        if (typeof text === 'string') next[k] = { ...next[k], text, isLocked: false };
+      }
+      return next;
+    });
+    setSynthesizedContent({ title: story.title, story: story.story });
+    setTypewriterIndex(story.story.length);  // skip animation for restored stories
+    toast({ variant: "success", title: "📖 已載入故事", description: story.title });
+  };
+
   // #10 — Image → 5W1H
   const handleAnalyzeImage = async (imageDataUrl: string) => {
     setIsLoading(prev => ({ ...prev, analyze: true }));
@@ -649,8 +740,14 @@ export default function InspirationGeneratorClient() {
     }
   };
 
-  // #12 — Save story to Firestore and copy share URL to clipboard
-  const handleShareStory = async () => {
+  // #12 — Phase 1: open pre-save dialog to ask isPublic
+  const handleShareStory = () => {
+    if (!synthesizedContent || !synthesizedContent.story) return;
+    setSharePreSaveOpen(true);
+  };
+
+  // #12 — Phase 2: actual save after user confirms isPublic in the dialog
+  const handleShareSubmit = async (opts: { isPublic: boolean }) => {
     if (!synthesizedContent || !synthesizedContent.story) return;
     setIsLoading(prev => ({ ...prev, share: true }));
     try {
@@ -664,11 +761,11 @@ export default function InspirationGeneratorClient() {
           why: w1hData.why.text, how: w1hData.how.text,
         },
         turnstileToken,
+        isPublic: opts.isPublic,
+        ownerName: user?.displayName ?? undefined,
       });
       const url = `${window.location.origin}${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}/#/s/${id}`;
-      // Open the share dialog. It silently attempts clipboard write itself,
-      // and the explicit Copy button there always works because the click
-      // restores document focus (Turnstile iframe sometimes steals it).
+      setSharePreSaveOpen(false);
       setShareDialogUrl(url);
     } catch (e: any) {
       console.error('saveStory failed:', e);
@@ -1010,9 +1107,17 @@ export default function InspirationGeneratorClient() {
         isAnalyzing={isLoading.analyze}
       />
       <ShareLinkDialog
-        open={shareDialogUrl !== null}
-        url={shareDialogUrl}
-        onClose={() => setShareDialogUrl(null)}
+        preSaveOpen={sharePreSaveOpen}
+        onPreSaveCancel={() => setSharePreSaveOpen(false)}
+        onPreSaveSubmit={handleShareSubmit}
+        isSaving={isLoading.share}
+        resultUrl={shareDialogUrl}
+        onResultClose={() => setShareDialogUrl(null)}
+      />
+      <LibraryDrawer
+        open={libraryOpen}
+        onOpenChange={setLibraryOpen}
+        onLoadStory={handleLoadFromLibrary}
       />
       <p className="text-center text-lg text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-950/70 p-6 rounded-xl shadow-lg mb-8 max-w-prose mx-auto border border-blue-200 dark:border-blue-800">
         點擊「隨機產生」來獲得靈感，或使用工具「潤飾語法」、「檢查一致性」及「合成內容」來完善您的創意點子！
