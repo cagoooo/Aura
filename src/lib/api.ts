@@ -69,9 +69,25 @@ async function callFunction<T>(name: string, body: unknown): Promise<T> {
   return json.data as T;
 }
 
+// Bulk variant: one Turnstile token + parallel Gemini calls server-side.
+export interface RandomElementBulkInput {
+  items: Array<{
+    elementType: W1HKey;
+    elementLabel: string;
+    existingOptions: string[];
+  }>;
+  turnstileToken?: string;
+}
+export interface RandomElementBulkOutput {
+  results: RandomElementGenerationOutput[];
+}
+
 // ─── Public API (drop-in replacements for old Server Action exports) ────────
 export const randomElementGenerate = (input: RandomElementGenerationInput) =>
   callFunction<RandomElementGenerationOutput>('randomElement', input);
+
+export const randomElementBulk = (input: RandomElementBulkInput) =>
+  callFunction<RandomElementBulkOutput>('randomElementBulk', input);
 
 export const grammarImprovement = (input: GrammarImprovementInput) =>
   callFunction<GrammarImprovementOutput>('grammarImprove', input);

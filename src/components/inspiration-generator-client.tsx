@@ -13,6 +13,7 @@ import {
   grammarImprovement, type GrammarImprovementInput, type GrammarImprovementOutput,
   storySynthesis, type StorySynthesisInput, type StorySynthesisOutput,
   randomElementGenerate, type RandomElementGenerationInput, type RandomElementGenerationOutput,
+  randomElementBulk,
 } from '@/lib/api';
 import { Loader2, CheckCircle2, Shuffle, BookText, Copy, FileText, Check, ThumbsUp, Wand2 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -108,10 +109,14 @@ const StyledSuggestionLine = ({ text }: { text: string }) => {
 export default function InspirationGeneratorClient() {
   const { toast } = useToast();
   const [w1hData, setW1hData] = useState<W1HState>(() => {
+    // Optimistic UI: instantly fill from W1H_ELEMENTS.options so user sees
+    // 6 example ideas immediately (0s perceived). The bulk AI call below
+    // will swap these for fresh AI-generated text once it finishes.
     const initialState = {} as W1HState;
     for (const key of ALL_W1H_KEYS) {
+      const opts = W1H_ELEMENTS[key].options;
       initialState[key] = {
-        text: '', 
+        text: opts[Math.floor(Math.random() * opts.length)],
         isLocked: false,
       };
     }
@@ -213,84 +218,91 @@ export default function InspirationGeneratorClient() {
     setRandomAllProgress(0);
     setSynthesizedContent(null);
     setConsistencyResult(null);
-    
+
     const elementsToProcessKeys = ALL_W1H_KEYS.filter(key => !w1hData[key].isLocked);
-    const totalToProcessCount = elementsToProcessKeys.length;
-    
-    if (totalToProcessCount === 0) {
+    const total = elementsToProcessKeys.length;
+
+    if (total === 0) {
       setIsLoading(prev => ({ ...prev, randomAll: false }));
-      setRandomAllProgress(0); 
+      setRandomAllProgress(0);
       toast({ title: "全部隨機", description: "所有項目均已鎖定，未產生新內容。" });
       return;
     }
-    
-    setRandomAllProgress(1); 
 
-    let processedCount = 0;
+    // Mark unlocked cards loading so spinners show.
+    setIsLoading(prev => ({
+      ...prev,
+      elements: elementsToProcessKeys.reduce(
+        (acc, k) => ({ ...acc, [k]: true }),
+        { ...prev.elements }
+      ),
+    }));
+    setRandomAllProgress(15);
+
+    const items = elementsToProcessKeys.map((key) => ({
+      elementType: key,
+      elementLabel: W1H_ELEMENTS[key].label,
+      existingOptions: Array.from(new Set([
+        ...W1H_ELEMENTS[key].options,
+        ...(recentSessionSuggestions[key] || []),
+      ])),
+    }));
+
     let generatedCount = 0;
+    try {
+      const turnstileToken = await getTurnstileToken();
+      setRandomAllProgress(40);
 
-    for (const key of elementsToProcessKeys) {
-      setIsLoading(prev => ({ ...prev, elements: { ...prev.elements, [key]: true } }));
-      try {
-        const allAvoidOptions = [
-          ...W1H_ELEMENTS[key].options,
-          ...(recentSessionSuggestions[key] || [])
-        ];
-        const uniqueAvoidOptions = Array.from(new Set(allAvoidOptions));
+      const { results } = await randomElementBulk({ items, turnstileToken });
+      setRandomAllProgress(95);
 
-        const turnstileToken = await getTurnstileToken();
-        const input: RandomElementGenerationInput = {
-          elementType: key,
-          elementLabel: W1H_ELEMENTS[key].label,
-          existingOptions: uniqueAvoidOptions,
-          turnstileToken,
-        };
-        const result = await randomElementGenerate(input);
-        setW1hData((prevData) => ({
-          ...prevData,
-          [key]: { ...prevData[key], text: result.generatedText },
-        }));
-
-        setRecentSessionSuggestions(prev => {
-          const updatedSuggestions = [...(prev[key] || [])];
-          if (result.generatedText && !updatedSuggestions.includes(result.generatedText)) {
-            updatedSuggestions.unshift(result.generatedText);
-          }
-          return {
-            ...prev,
-            [key]: updatedSuggestions.slice(0, 5) // Keep last 5
-          };
-        });
-
-        generatedCount++;
-        
-        requestAnimationFrame(() => {
-          const cardElement = document.getElementById(`w1h-card-${key}`);
-          if (cardElement) {
-            cardElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      setW1hData(prev => {
+        const next = { ...prev };
+        elementsToProcessKeys.forEach((key, i) => {
+          const text = results[i]?.generatedText?.trim();
+          if (text) {
+            next[key] = { ...next[key], text };
+            generatedCount++;
           }
         });
+        return next;
+      });
 
-      } catch (error) {
-        console.error(`Random generation error for ${key} during random all:`, error);
-        setW1hData((prevData) => ({
-          ...prevData,
-          [key]: { ...prevData[key], text: getRandomItem(W1H_ELEMENTS[key].options) },
-        }));
-      } finally {
-         processedCount++;
-         setRandomAllProgress(Math.min((processedCount / totalToProcessCount) * 100, 100));
-         requestAnimationFrame(() => {
-            setIsLoading(prev => ({ ...prev, elements: { ...prev.elements, [key]: false } }));
-         });
-      }
-    }
-    
-    setIsLoading(prev => ({ ...prev, randomAll: false }));
-    if (generatedCount > 0) {
+      setRecentSessionSuggestions(prev => {
+        const next = { ...prev };
+        elementsToProcessKeys.forEach((key, i) => {
+          const text = results[i]?.generatedText?.trim();
+          if (!text) return;
+          const updated = [...(next[key] || [])];
+          if (!updated.includes(text)) updated.unshift(text);
+          next[key] = updated.slice(0, 5);
+        });
+        return next;
+      });
+
+      setRandomAllProgress(100);
+      if (generatedCount > 0) {
         toast({ variant: "success", title: "全部隨機完畢", description: `已為 ${generatedCount} 個未鎖定項目產生新內容。` });
-    } else if (totalToProcessCount > 0) {
-        toast({ variant: "success", title: "全部隨機完畢", description: `處理了 ${totalToProcessCount} 個項目，但由於錯誤或未返回內容，部分可能使用備用選項。` });
+      }
+    } catch (error) {
+      console.error('Bulk random failed, falling back to default options:', error);
+      setW1hData(prev => {
+        const next = { ...prev };
+        elementsToProcessKeys.forEach((key) => {
+          next[key] = { ...next[key], text: getRandomItem(W1H_ELEMENTS[key].options) };
+        });
+        return next;
+      });
+      toast({ variant: "destructive", title: "全部隨機失敗", description: "AI 服務暫時不可用，已使用預設備用內容。" });
+    } finally {
+      setIsLoading(prev => ({
+        ...prev,
+        randomAll: false,
+        elements: elementsToProcessKeys.reduce(
+          (acc, k) => ({ ...acc, [k]: false }),
+          { ...prev.elements }
+        ),
+      }));
     }
   };
 
@@ -535,76 +547,73 @@ export default function InspirationGeneratorClient() {
   };
   
   useEffect(() => {
+    // On mount: 6 cards already show optimistic placeholders from
+    // W1H_ELEMENTS.options. Fire ONE bulk request to swap them with
+    // fresh AI-generated text. Single Turnstile token + parallel
+    // server-side Gemini calls → ~3s end-to-end vs ~6-10s before.
     const populateInitialElements = async () => {
-      let initialUpdateOccurred = false;
-      const initialElementsToProcess = ALL_W1H_KEYS.filter(key => w1hData[key as W1HKey].text === '');
+      const items = ALL_W1H_KEYS.map((key) => ({
+        elementType: key,
+        elementLabel: W1H_ELEMENTS[key].label,
+        existingOptions: Array.from(new Set([
+          ...W1H_ELEMENTS[key].options,
+          ...(recentSessionSuggestions[key] || []),
+        ])),
+      }));
 
-      if (initialElementsToProcess.length === 0) return;
+      // Mark all 6 cards loading so the spinner shows over the optimistic text.
+      setIsLoading(prev => ({
+        ...prev,
+        elements: ALL_W1H_KEYS.reduce(
+          (acc, k) => ({ ...acc, [k]: true }),
+          {} as Record<W1HKey, boolean>
+        ),
+      }));
 
-      for (const key of initialElementsToProcess) {
-        if (w1hData[key as W1HKey].text !== '') continue; // Skip if already populated by another concurrent effect
+      try {
+        const turnstileToken = await getTurnstileToken();
+        const { results } = await randomElementBulk({ items, turnstileToken });
 
-        initialUpdateOccurred = true;
-        setIsLoading(prev => ({ ...prev, elements: { ...prev.elements, [key as W1HKey]: true } }));
-        try {
-          const allAvoidOptions = [
-            ...W1H_ELEMENTS[key as W1HKey].options,
-            ...(recentSessionSuggestions[key as W1HKey] || [])
-          ];
-          const uniqueAvoidOptions = Array.from(new Set(allAvoidOptions));
-
-          const turnstileToken = await getTurnstileToken();
-          const result = await randomElementGenerate({
-            elementType: key as W1HKey,
-            elementLabel: W1H_ELEMENTS[key as W1HKey].label,
-            existingOptions: uniqueAvoidOptions,
-            turnstileToken,
+        setW1hData(prev => {
+          const next = { ...prev };
+          ALL_W1H_KEYS.forEach((key, i) => {
+            const generated = results[i]?.generatedText?.trim();
+            if (generated) next[key] = { ...next[key], text: generated };
           });
-          
-          setW1hData(prevData => ({
-            ...prevData,
-            [key as W1HKey]: { ...prevData[key as W1HKey], text: result.generatedText },
-          }));
+          return next;
+        });
 
-          setRecentSessionSuggestions(prev => {
-            const updatedSuggestions = [...(prev[key as W1HKey] || [])];
-             if (result.generatedText && !updatedSuggestions.includes(result.generatedText)) {
-                updatedSuggestions.unshift(result.generatedText);
-            }
-            return {
-              ...prev,
-              [key as W1HKey]: updatedSuggestions.slice(0, 5)
-            };
+        setRecentSessionSuggestions(prev => {
+          const next = { ...prev };
+          ALL_W1H_KEYS.forEach((key, i) => {
+            const generated = results[i]?.generatedText?.trim();
+            if (!generated) return;
+            const updated = [...(next[key] || [])];
+            if (!updated.includes(generated)) updated.unshift(generated);
+            next[key] = updated.slice(0, 5);
           });
+          return next;
+        });
 
-
-          requestAnimationFrame(() => {
-            const cardElement = document.getElementById(`w1h-card-${key}`);
-            if (cardElement) {
-              cardElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-            }
-          });
-
-        } catch (error) {
-          console.error(`Initial random generation error for ${key}:`, error);
-          setW1hData(prevData => ({
-            ...prevData,
-            [key as W1HKey]: { ...prevData[key as W1HKey], text: getRandomItem(W1H_ELEMENTS[key as W1HKey].options) },
-          }));
-        } finally {
-           requestAnimationFrame(() => { 
-              setIsLoading(prev => ({ ...prev, elements: { ...prev.elements, [key as W1HKey]: false } }));
-           });
-        }
-      }
-      if (initialUpdateOccurred) {
-        toast({ variant: "success", title: "初始靈感已填入！", description: "已為您填入一些初始的5W1H靈感點子。" });
+        toast({ variant: "success", title: "AI 靈感已填入！", description: "已為您產生 6 個全新 5W1H 點子。" });
+      } catch (error) {
+        console.error('Initial bulk generation failed; keeping optimistic placeholders:', error);
+        // Cards already have constants-based text from useState init, so we
+        // silently degrade — no need for a destructive toast.
+      } finally {
+        setIsLoading(prev => ({
+          ...prev,
+          elements: ALL_W1H_KEYS.reduce(
+            (acc, k) => ({ ...acc, [k]: false }),
+            {} as Record<W1HKey, boolean>
+          ),
+        }));
       }
     };
 
     populateInitialElements();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); 
+  }, []);
 
 
   const isAnyMainButtonActive = isLoading.randomAll || isLoading.grammar || isLoading.consistency || isLoading.synthesis;

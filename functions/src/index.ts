@@ -66,3 +66,43 @@ export const randomElement = wrapFlow(runRandomElementGeneration);
 export const grammarImprove = wrapFlow(runGrammarImprovement);
 export const checkConsistency = wrapFlow(runConsistencyCheck);
 export const synthesizeStory = wrapFlow(runStorySynthesis);
+
+// Bulk endpoint: one Turnstile token + parallel Gemini calls.
+// Used by initial page load and "全部隨機" to avoid the latency of
+// 6 sequential token-fetch + serial server requests.
+type BulkItem = {
+  elementType: 'who' | 'what' | 'when' | 'where' | 'why' | 'how';
+  elementLabel: string;
+  existingOptions: string[];
+};
+type BulkInput = { items?: BulkItem[]; turnstileToken?: string };
+const MAX_BULK_ITEMS = 10;
+
+export const randomElementBulk = onRequest(
+  { secrets: SECRETS },
+  withCors(async (req, res) => {
+    if (req.method === 'OPTIONS') { res.status(204).send(''); return; }
+    if (req.method !== 'POST') {
+      res.status(405).json({ success: false, error: 'POST only' });
+      return;
+    }
+    const input = (req.body ?? {}) as BulkInput;
+    await verifyTurnstileToken(input.turnstileToken);
+
+    const items = Array.isArray(input.items) ? input.items : [];
+    if (items.length === 0 || items.length > MAX_BULK_ITEMS) {
+      res.status(400).json({ success: false, error: `items must be 1..${MAX_BULK_ITEMS}` });
+      return;
+    }
+
+    const results = await Promise.all(
+      items.map((item) =>
+        runRandomElementGeneration(item).catch((e) => {
+          console.error('bulk item failed:', item.elementType, e);
+          return { generatedText: '' };
+        })
+      )
+    );
+    res.json({ success: true, data: { results } });
+  })
+);
