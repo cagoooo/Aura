@@ -8,6 +8,7 @@ export default function FloatingAssistantButton() {
       target="_blank"
       rel="noopener noreferrer"
       className={cn(
+        'live-hidden',
         'fixed bottom-20 right-4 sm:bottom-24 sm:right-6 z-50', // Positioned above the other button
         'flex items-center justify-center', // Flex properties
         'px-4 py-3', // Padding

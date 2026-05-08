@@ -180,18 +180,21 @@ export const analyzeImage = onRequest(
       res.status(405).json({ success: false, error: 'POST only' });
       return;
     }
-    const input = (req.body ?? {}) as { imageDataUrl?: string; turnstileToken?: string };
+    const input = (req.body ?? {}) as { imageDataUrl?: string; turnstileToken?: string } & SettingsExtras;
     await verifyTurnstileToken(input.turnstileToken);
     if (!input.imageDataUrl || !input.imageDataUrl.startsWith('data:image/')) {
       res.status(400).json({ success: false, error: 'imageDataUrl missing or not a data:image/* URL' });
       return;
     }
-    // Reject overly large payloads (~1.5MB raw, equivalent to ~1.1MB after base64 decode)
     if (input.imageDataUrl.length > 1_500_000) {
       res.status(413).json({ success: false, error: '圖片太大，請壓縮到 1MB 以下再上傳。' });
       return;
     }
-    const data = await runAnalyzeImage({ imageDataUrl: input.imageDataUrl });
+    const data = await runAnalyzeImage({
+      imageDataUrl: input.imageDataUrl,
+      style: input.style as any,
+      gradeLevel: input.gradeLevel as any,
+    });
     res.json({ success: true, data });
   })
 );
@@ -204,13 +207,14 @@ type BulkItem = {
   elementLabel: string;
   existingOptions: string[];
 };
-type BulkInput = { items?: BulkItem[]; turnstileToken?: string };
+type SettingsExtras = { style?: string; gradeLevel?: string };
+type BulkInput = { items?: BulkItem[]; turnstileToken?: string } & SettingsExtras;
 const MAX_BULK_ITEMS = 10;
 
 // Bulk grammar improvement: 6 parallel Gemini calls + 1 Turnstile token.
 // Speeds up "潤飾語法" from ~6s sequential to ~2-3s parallel.
-type GrammarBulkItem = Omit<GrammarImprovementInput, 'turnstileToken'>;
-type GrammarBulkInput = { items?: GrammarBulkItem[]; turnstileToken?: string };
+type GrammarBulkItem = Omit<GrammarImprovementInput, 'turnstileToken' | 'style' | 'gradeLevel'>;
+type GrammarBulkInput = { items?: GrammarBulkItem[]; turnstileToken?: string } & SettingsExtras;
 
 export const grammarImproveBulk = onRequest(
   { secrets: SECRETS },
@@ -231,9 +235,13 @@ export const grammarImproveBulk = onRequest(
 
     const results = await Promise.all(
       items.map((item) =>
-        runGrammarImprovement(item).catch((e) => {
+        runGrammarImprovement({
+          ...item,
+          style: input.style as any,
+          gradeLevel: input.gradeLevel as any,
+        }).catch((e) => {
           console.error('bulk grammar item failed:', item.elementType, e);
-          return { refinedText: item.text };  // fallback: return original on error
+          return { refinedText: item.text };
         })
       )
     );
@@ -260,7 +268,11 @@ export const randomElementBulk = onRequest(
 
     const results = await Promise.all(
       items.map((item) =>
-        runRandomElementGeneration(item).catch((e) => {
+        runRandomElementGeneration({
+          ...item,
+          style: input.style as any,
+          gradeLevel: input.gradeLevel as any,
+        }).catch((e) => {
           console.error('bulk item failed:', item.elementType, e);
           return { generatedText: '' };
         })

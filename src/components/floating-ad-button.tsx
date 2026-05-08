@@ -8,6 +8,7 @@ export default function FloatingAdButton() {
       target="_blank"
       rel="noopener noreferrer"
       className={cn(
+        'live-hidden',
         'fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50', // Position with mobile adjustment
         'flex items-center justify-center', // Flex properties
         'px-4 py-3', // Padding

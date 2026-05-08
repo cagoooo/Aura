@@ -1,10 +1,12 @@
 import { z } from 'genkit';
 import { getAi } from '../genkit';
+import { StoryStyleSchema, GradeLevelSchema, buildStyleAndGradeHints } from '../prompt-modifiers';
 
 export const AnalyzeImageInputSchema = z.object({
-  // Data URL (data:image/jpeg;base64,...) — front-end compresses before send
   imageDataUrl: z.string().min(20),
   turnstileToken: z.string().optional(),
+  style: StoryStyleSchema,
+  gradeLevel: GradeLevelSchema,
 });
 export type AnalyzeImageInput = z.infer<typeof AnalyzeImageInputSchema>;
 
@@ -41,12 +43,11 @@ const SYSTEM_PROMPT = `你是一位富有想像力的繁體中文（台灣）創
 
 export async function runAnalyzeImage(input: AnalyzeImageInput): Promise<AnalyzeImageOutput> {
   const ai = getAi();
+  const styleGradeHint = buildStyleAndGradeHints(input);
 
-  // Multimodal generate: text + image part. Gemini 2.5 Flash supports
-  // direct base64 data URLs in the `media.url` field.
   const { output } = await ai.generate({
     prompt: [
-      { text: SYSTEM_PROMPT },
+      { text: SYSTEM_PROMPT + styleGradeHint },
       { text: '請看完這張圖片後，產出一個 5W1H 故事概念：' },
       { media: { url: input.imageDataUrl } },
     ],

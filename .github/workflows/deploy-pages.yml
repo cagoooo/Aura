@@ -41,6 +41,8 @@ jobs:
           NEXT_PUBLIC_TURNSTILE_SITE_KEY: ${{ secrets.TURNSTILE_SITE_KEY }}
           # Cache-bust og:image so FB/LINE re-crawl on each deploy
           NEXT_PUBLIC_BUILD_ID: ${{ github.sha }}
+          # Cloudflare Web Analytics (optional — empty = disabled)
+          NEXT_PUBLIC_CF_ANALYTICS_TOKEN: ${{ secrets.CF_ANALYTICS_TOKEN }}
         run: npm run build
 
       - name: Add .nojekyll

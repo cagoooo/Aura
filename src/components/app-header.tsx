@@ -3,17 +3,34 @@
 import { Lightbulb, HelpCircle } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { useAppSettings } from '@/hooks/use-app-settings';
+import SettingsPopover from '@/components/settings-popover';
+import { useEffect } from 'react';
 
-const STORAGE_KEY = 'aura.onboarding.v1.dismissed';
+const ONBOARDING_STORAGE_KEY = 'aura.onboarding.v1.dismissed';
 
 export default function AppHeader() {
+  const { settings, update, hydrated } = useAppSettings();
+
+  // F11 already triggers browser fullscreen — we intercept Esc to also exit
+  // liveMode if active, so user has a quick "back to normal" button.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && settings.liveMode) {
+        update('liveMode', false);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [settings.liveMode, update]);
+
   const showHelp = () => {
-    try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
+    try { localStorage.removeItem(ONBOARDING_STORAGE_KEY); } catch { /* ignore */ }
     window.location.reload();
   };
 
   return (
-    <header className="bg-card border border-border sticky top-0 z-50">
+    <header className="bg-card border border-border sticky top-0 z-50 no-print live-hidden">
       <div className="container mx-auto px-4 py-3 flex items-center justify-center relative">
         <Link
           href="/"
@@ -24,16 +41,28 @@ export default function AppHeader() {
             5W1H 靈感發射器 🚀
           </span>
         </Link>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={showHelp}
-          aria-label="顯示使用說明"
-          className="absolute right-2 sm:right-4 text-muted-foreground hover:text-primary"
-        >
-          <HelpCircle className="h-5 w-5 sm:mr-1" />
-          <span className="hidden sm:inline">使用說明</span>
-        </Button>
+        <div className="absolute right-2 sm:right-4 flex items-center gap-1">
+          {hydrated && (
+            <SettingsPopover
+              style={settings.style}
+              gradeLevel={settings.gradeLevel}
+              liveMode={settings.liveMode}
+              onChangeStyle={(v) => update('style', v)}
+              onChangeGrade={(v) => update('gradeLevel', v)}
+              onToggleLiveMode={(v) => update('liveMode', v)}
+            />
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={showHelp}
+            aria-label="顯示使用說明"
+            className="text-muted-foreground hover:text-primary"
+          >
+            <HelpCircle className="h-5 w-5 sm:mr-1" />
+            <span className="hidden sm:inline">使用說明</span>
+          </Button>
+        </div>
       </div>
     </header>
   );

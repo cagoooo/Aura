@@ -1,11 +1,14 @@
 import { z } from 'genkit';
 import { getAi } from '../genkit';
+import { StoryStyleSchema, GradeLevelSchema } from '../prompt-modifiers';
 
 export const GrammarImprovementInputSchema = z.object({
   elementType: z.enum(['who', 'what', 'when', 'where', 'why', 'how']),
   text: z.string(),
   elementLabel: z.string(),
   turnstileToken: z.string().optional(),
+  style: StoryStyleSchema,
+  gradeLevel: GradeLevelSchema,
 });
 export type GrammarImprovementInput = z.infer<typeof GrammarImprovementInputSchema>;
 

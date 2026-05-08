@@ -7,22 +7,27 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Lock, Unlock, Shuffle, Loader2 } from 'lucide-react';
+import { Lock, Unlock, Shuffle, Loader2, Mic, MicOff } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn, assetPath } from '@/lib/utils';
 import confetti from 'canvas-confetti';
 
 interface W1HElementCardProps {
-  id: string; // Ensure id is part of props
+  id: string;
   element: W1HElement;
   value: string;
   isLocked: boolean;
-  isLoading: boolean; // Individual loading state for this card
+  isLoading: boolean;
   onValueChange: (value: string) => void;
   onRandom: () => void;
   onToggleLock: () => void;
-  mainOperationInProgress?: boolean; // True if a global operation (grammar, consistency, synthesis) is active
+  mainOperationInProgress?: boolean;
   cardClassName?: string;
+  // Speech-input props (managed by parent so only one card listens at a time)
+  speechSupported?: boolean;
+  isListening?: boolean;
+  speechInterim?: string;
+  onMicToggle?: () => void;
 }
 
 export default function W1HElementCard({
@@ -30,12 +35,16 @@ export default function W1HElementCard({
   element,
   value,
   isLocked,
-  isLoading, // This card's specific loading state
+  isLoading,
   onValueChange,
   onRandom,
   onToggleLock,
   mainOperationInProgress = false,
   cardClassName,
+  speechSupported = false,
+  isListening = false,
+  speechInterim = '',
+  onMicToggle,
 }: W1HElementCardProps) {
   const randomButtonText = "隨機產生";
   const randomButtonAriaLabel = `隨機產生${element.label}`;
@@ -84,25 +93,50 @@ export default function W1HElementCard({
       )}
     >
       <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <CardTitle className="text-xl font-semibold text-primary">{element.label}</CardTitle>
-        <TooltipProvider>
-          <Tooltip delayDuration={300}>
-            <TooltipTrigger asChild>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                onClick={onToggleLock} 
-                aria-label={isLocked ? '解鎖' : '鎖定'} 
-                disabled={isLockButtonDisabled}
-              >
-                {isLocked ? <Lock className="h-5 w-5 text-accent" /> : <Unlock className="h-5 w-5 text-muted-foreground" />}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>{isLocked ? '解鎖此項目' : '鎖定此項目'}</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+        <CardTitle className="live-card-title text-xl font-semibold text-primary">{element.label}</CardTitle>
+        <div className="flex items-center gap-1">
+          {speechSupported && onMicToggle && (
+            <TooltipProvider>
+              <Tooltip delayDuration={300}>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={onMicToggle}
+                    disabled={isTextareaDisabled}
+                    aria-label={isListening ? '停止語音輸入' : '開始語音輸入'}
+                    aria-pressed={isListening}
+                    className={isListening ? 'text-red-500 hover:text-red-600 animate-pulse' : 'text-muted-foreground hover:text-primary'}
+                  >
+                    {isListening ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{isListening ? '錄音中…再按一次停止' : '語音輸入（中文）'}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+          <TooltipProvider>
+            <Tooltip delayDuration={300}>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onToggleLock}
+                  aria-label={isLocked ? '解鎖' : '鎖定'}
+                  aria-pressed={isLocked}
+                  disabled={isLockButtonDisabled}
+                >
+                  {isLocked ? <Lock className="h-5 w-5 text-accent" /> : <Unlock className="h-5 w-5 text-muted-foreground" />}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{isLocked ? '解鎖此項目' : '鎖定此項目'}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
       </CardHeader>
       <CardContent className="flex flex-col flex-grow gap-4">
         {isLoading ? (
@@ -113,14 +147,24 @@ export default function W1HElementCard({
             <Skeleton className="h-3.5 w-[55%] bg-primary/15" />
           </div>
         ) : (
-          <Textarea
-            value={value}
-            onChange={(e) => onValueChange(e.target.value)}
-            placeholder={element.placeholder}
-            className="flex-grow min-h-[100px] text-base rounded-md shadow-inner bg-background/50 dark:bg-card animate-in fade-in-0 duration-300"
-            disabled={isTextareaDisabled}
-            aria-label={element.label}
-          />
+          <div className="flex flex-col flex-grow">
+            <Textarea
+              value={value + (isListening && speechInterim ? `\n💬 ${speechInterim}` : '')}
+              onChange={(e) => onValueChange(e.target.value)}
+              placeholder={element.placeholder}
+              className={cn(
+                "flex-grow min-h-[100px] text-base rounded-md shadow-inner bg-background/50 dark:bg-card animate-in fade-in-0 duration-300",
+                isListening && "ring-2 ring-red-400 ring-offset-1"
+              )}
+              disabled={isTextareaDisabled}
+              aria-label={element.label}
+            />
+            {isListening && (
+              <p className="text-xs text-red-500 mt-1 px-1 animate-pulse" role="status">
+                🎙️ 正在聆聽…講完話會自動停止
+              </p>
+            )}
+          </div>
         )}
         <Button
           onClick={onRandom}

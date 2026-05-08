@@ -1,5 +1,6 @@
 import { z } from 'genkit';
 import { getAi } from '../genkit';
+import { StoryStyleSchema, GradeLevelSchema, buildStyleAndGradeHints } from '../prompt-modifiers';
 
 export const StorySynthesisInputSchema = z.object({
   who: z.string(),
@@ -9,6 +10,8 @@ export const StorySynthesisInputSchema = z.object({
   why: z.string(),
   how: z.string(),
   turnstileToken: z.string().optional(),
+  style: StoryStyleSchema,
+  gradeLevel: GradeLevelSchema,
 });
 export type StorySynthesisInput = z.infer<typeof StorySynthesisInputSchema>;
 
@@ -45,14 +48,25 @@ How: {{{how}}}
 Output your response as a JSON object matching the schema, including 'title' and 'story' fields.
 `;
 
-let _prompt: any = null;
-const getPrompt = () => {
-  if (!_prompt) {
-    _prompt = getAi().definePrompt({
-      name: 'storySynthesisPrompt',
-      input: { schema: StorySynthesisInputSchema },
+export async function runStorySynthesis(
+  input: StorySynthesisInput
+): Promise<StorySynthesisOutput> {
+  const ai = getAi();
+  const styleGradeHint = buildStyleAndGradeHints(input);
+
+  // Inline-replace template vars; runtime-built prompt avoids registry warnings
+  const promptText = (PROMPT + styleGradeHint)
+    .replace(/\{\{\{who\}\}\}/g, input.who)
+    .replace(/\{\{\{what\}\}\}/g, input.what)
+    .replace(/\{\{\{when\}\}\}/g, input.when)
+    .replace(/\{\{\{where\}\}\}/g, input.where)
+    .replace(/\{\{\{why\}\}\}/g, input.why)
+    .replace(/\{\{\{how\}\}\}/g, input.how);
+
+  try {
+    const { output } = await ai.generate({
+      prompt: promptText,
       output: { schema: StorySynthesisOutputSchema },
-      prompt: PROMPT,
       config: {
         safetySettings: [
           { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_LOW_AND_ABOVE' },
@@ -63,17 +77,6 @@ const getPrompt = () => {
         ],
       },
     });
-  }
-  return _prompt;
-};
-
-export async function runStorySynthesis(
-  input: StorySynthesisInput
-): Promise<StorySynthesisOutput> {
-  const prompt = getPrompt();
-
-  try {
-    const { output } = await prompt(input);
     if (!output || !output.story || !output.title) {
       console.error('Story synthesis response missing title/story:', input);
       return {

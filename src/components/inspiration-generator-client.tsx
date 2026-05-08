@@ -18,6 +18,8 @@ import {
   saveStory,
 } from '@/lib/api';
 import ImageUploadDialog from '@/components/image-upload-dialog';
+import { useSpeechRecognition } from '@/hooks/use-speech-recognition';
+import { useAppSettings } from '@/hooks/use-app-settings';
 import { Loader2, CheckCircle2, Shuffle, BookText, Copy, FileText, Check, ThumbsUp, Wand2, Printer, ChevronDown, Camera, Presentation, Share2, Link2 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
@@ -168,6 +170,45 @@ export default function InspirationGeneratorClient() {
   const synthesizedStoryCardRef = useRef<HTMLDivElement>(null);
   const turnstileRef = useRef<TurnstileWidgetHandle>(null);
 
+  // App-wide settings (style / gradeLevel / liveMode)
+  const { settings } = useAppSettings();
+
+  // Speech recognition: ONE instance shared, parent tracks which card is
+  // currently listening. Browsers only allow one active SR at a time.
+  const speech = useSpeechRecognition();
+  const [listeningKey, setListeningKey] = useState<W1HKey | null>(null);
+  const handleMicToggle = useCallback((key: W1HKey) => {
+    if (speech.isListening && listeningKey === key) {
+      speech.stop();
+      setListeningKey(null);
+      return;
+    }
+    if (speech.isListening) speech.stop();
+    setListeningKey(key);
+    speech.start((finalText) => {
+      setW1hData(prev => {
+        const existing = prev[key].text.trim();
+        const merged = existing ? `${existing}${finalText}` : finalText;
+        return { ...prev, [key]: { ...prev[key], text: merged } };
+      });
+    });
+  }, [speech, listeningKey]);
+  // Reset listeningKey when SR ends naturally
+  useEffect(() => {
+    if (!speech.isListening && listeningKey !== null) {
+      // Small delay so the last interim has chance to commit
+      const t = setTimeout(() => setListeningKey(null), 300);
+      return () => clearTimeout(t);
+    }
+  }, [speech.isListening, listeningKey]);
+  // Surface SR errors as toasts
+  useEffect(() => {
+    if (speech.error) {
+      toast({ variant: "destructive", title: "語音輸入失敗", description: speech.error });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [speech.error]);
+
   const getTurnstileToken = useCallback(async (): Promise<string | undefined> => {
     try {
       return await turnstileRef.current?.getToken();
@@ -176,6 +217,14 @@ export default function InspirationGeneratorClient() {
       return undefined;
     }
   }, []);
+
+  // Settings to attach to every server call. Shorthand getter so we don't
+  // forget on any single call site.
+  const callExtras = useCallback(async () => ({
+    turnstileToken: await getTurnstileToken(),
+    style: settings.style,
+    gradeLevel: settings.gradeLevel,
+  }), [getTurnstileToken, settings.style, settings.gradeLevel]);
 
   // #17 — Cold-start hint. Cloud Functions cold-start can take 2-5 sec on
   // a fresh / scaled-to-zero instance. Show a one-time friendly toast so
@@ -230,6 +279,8 @@ export default function InspirationGeneratorClient() {
         elementLabel: W1H_ELEMENTS[key].label,
         existingOptions: uniqueAvoidOptions,
         turnstileToken,
+        style: settings.style,
+        gradeLevel: settings.gradeLevel,
       };
       const result = await randomElementGenerate(input);
       setW1hData((prev) => ({ ...prev, [key]: { ...prev[key], text: result.generatedText } }));
@@ -296,7 +347,7 @@ export default function InspirationGeneratorClient() {
       const turnstileToken = await getTurnstileToken();
       setRandomAllProgress(40);
 
-      const { results } = await randomElementBulk({ items, turnstileToken });
+      const { results } = await randomElementBulk({ items, turnstileToken, style: settings.style, gradeLevel: settings.gradeLevel });
       disarmColdStartHint();
       setRandomAllProgress(95);
 
@@ -376,7 +427,7 @@ export default function InspirationGeneratorClient() {
         text: newW1hData[key].text,
         elementLabel: W1H_ELEMENTS[key].label,
       }));
-      const { results } = await grammarImproveBulk({ items, turnstileToken });
+      const { results } = await grammarImproveBulk({ items, turnstileToken, style: settings.style, gradeLevel: settings.gradeLevel });
       disarmColdStartHint();
       setGrammarProgress(95);
       elementsToRefine.forEach((key, i) => {
@@ -453,6 +504,8 @@ export default function InspirationGeneratorClient() {
       why: w1hData.why.text,
       how: w1hData.how.text,
       turnstileToken,
+      style: settings.style,
+      gradeLevel: settings.gradeLevel,
     };
 
     armColdStartHint();
@@ -506,6 +559,8 @@ export default function InspirationGeneratorClient() {
       why: w1hData.why.text,
       how: w1hData.how.text,
       turnstileToken,
+      style: settings.style,
+      gradeLevel: settings.gradeLevel,
     };
 
     const errorTitles = ['生成標題失敗', '內容生成受阻', '合成發生錯誤'];
@@ -569,7 +624,7 @@ export default function InspirationGeneratorClient() {
     setIsLoading(prev => ({ ...prev, analyze: true }));
     try {
       const turnstileToken = await getTurnstileToken();
-      const result = await analyzeImage({ imageDataUrl, turnstileToken });
+      const result = await analyzeImage({ imageDataUrl, turnstileToken, style: settings.style, gradeLevel: settings.gradeLevel });
       // Replace all 6 cards (skip locked ones)
       setW1hData(prev => {
         const next = { ...prev };
@@ -872,7 +927,7 @@ export default function InspirationGeneratorClient() {
       armColdStartHint();
       try {
         const turnstileToken = await getTurnstileToken();
-        const { results } = await randomElementBulk({ items, turnstileToken });
+        const { results } = await randomElementBulk({ items, turnstileToken, style: settings.style, gradeLevel: settings.gradeLevel });
         disarmColdStartHint();
 
         // #16 Stagger: reveal each card one at a time with a 120ms cascade
@@ -1196,7 +1251,11 @@ export default function InspirationGeneratorClient() {
             onRandom={() => handleRandomGenerate(key)}
             onToggleLock={() => handleToggleLock(key)}
             mainOperationInProgress={disableCardInteractionsGlobally}
-            cardClassName={W1H_CARD_COLORS[key]}
+            cardClassName={`${W1H_CARD_COLORS[key]} live-emphasize`}
+            speechSupported={speech.supported}
+            isListening={speech.isListening && listeningKey === key}
+            speechInterim={listeningKey === key ? speech.interim : ''}
+            onMicToggle={() => handleMicToggle(key)}
           />
         ))}
       </div>

@@ -8,6 +8,14 @@
 
 import type { W1HKey } from '@/lib/constants';
 
+// Style + grade are user prefs that get attached to ~every flow call.
+export type StoryStyle = 'free' | 'fairytale' | 'wuxia' | 'scifi' | 'mystery' | 'school' | 'folklore';
+export type GradeLevel = 'auto' | 'lower' | 'middle' | 'upper' | 'junior';
+export interface SettingsExtras {
+  style?: StoryStyle;
+  gradeLevel?: GradeLevel;
+}
+
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE ??
   'https://asia-east1-aura-2sg5o.cloudfunctions.net';
@@ -18,6 +26,8 @@ export interface RandomElementGenerationInput {
   elementLabel: string;
   existingOptions: string[];
   turnstileToken?: string;
+  style?: StoryStyle;
+  gradeLevel?: GradeLevel;
 }
 export interface RandomElementGenerationOutput {
   generatedText: string;
@@ -28,6 +38,8 @@ export interface GrammarImprovementInput {
   text: string;
   elementLabel: string;
   turnstileToken?: string;
+  style?: StoryStyle;
+  gradeLevel?: GradeLevel;
 }
 export interface GrammarImprovementOutput {
   refinedText: string;
@@ -37,6 +49,8 @@ export interface ConsistencyCheckInput {
   who: string; what: string; when: string;
   where: string; why: string; how: string;
   turnstileToken?: string;
+  style?: StoryStyle;
+  gradeLevel?: GradeLevel;
 }
 export interface ConsistencyCheckOutput {
   suggestions: string[];
@@ -47,6 +61,8 @@ export interface StorySynthesisInput {
   who: string; what: string; when: string;
   where: string; why: string; how: string;
   turnstileToken?: string;
+  style?: StoryStyle;
+  gradeLevel?: GradeLevel;
 }
 export interface StorySynthesisOutput {
   title: string;
@@ -77,6 +93,8 @@ export interface RandomElementBulkInput {
     existingOptions: string[];
   }>;
   turnstileToken?: string;
+  style?: StoryStyle;
+  gradeLevel?: GradeLevel;
 }
 export interface RandomElementBulkOutput {
   results: RandomElementGenerationOutput[];
@@ -96,6 +114,8 @@ export interface GrammarImprovementBulkInput {
     elementLabel: string;
   }>;
   turnstileToken?: string;
+  style?: StoryStyle;
+  gradeLevel?: GradeLevel;
 }
 export interface GrammarImprovementBulkOutput {
   results: GrammarImprovementOutput[];
@@ -107,6 +127,8 @@ export const grammarImproveBulk = (input: GrammarImprovementBulkInput) =>
 export interface AnalyzeImageInput {
   imageDataUrl: string;
   turnstileToken?: string;
+  style?: StoryStyle;
+  gradeLevel?: GradeLevel;
 }
 export interface AnalyzeImageOutput {
   who: string; what: string; when: string;
@@ -121,6 +143,8 @@ export interface SaveStoryInput {
   story: string;
   w1h: { who: string; what: string; when: string; where: string; why: string; how: string };
   turnstileToken?: string;
+  style?: StoryStyle;
+  gradeLevel?: GradeLevel;
 }
 export const saveStory = (input: SaveStoryInput) =>
   callFunction<{ id: string }>('saveStory', input);

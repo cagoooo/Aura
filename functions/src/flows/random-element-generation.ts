@@ -1,12 +1,15 @@
 import { z } from 'genkit';
 import { getAi } from '../genkit';
 import { W1H_ELEMENTS, type W1HKey } from '../constants';
+import { StoryStyleSchema, GradeLevelSchema, buildStyleAndGradeHints } from '../prompt-modifiers';
 
 export const RandomElementGenerationInputSchema = z.object({
   elementType: z.enum(['who', 'what', 'when', 'where', 'why', 'how']),
   elementLabel: z.string(),
   existingOptions: z.array(z.string()),
   turnstileToken: z.string().optional(),
+  style: StoryStyleSchema,
+  gradeLevel: GradeLevelSchema,
 });
 export type RandomElementGenerationInput = z.infer<typeof RandomElementGenerationInputSchema>;
 
@@ -56,16 +59,28 @@ Or for '何事 (What)':
 }
 `;
 
-// Lazy-init prompt cache: definePrompt registers under a name; calling it
-// every invocation produces "already has an entry" warnings. Cache once.
-let _prompt: any = null;
-const getPrompt = () => {
-  if (!_prompt) {
-    _prompt = getAi().definePrompt({
-      name: 'randomElementGenerationPrompt',
-      input: { schema: RandomElementGenerationInputSchema },
+export async function runRandomElementGeneration(
+  input: RandomElementGenerationInput
+): Promise<RandomElementGenerationOutput> {
+  const ai = getAi();
+  const styleGradeHint = buildStyleAndGradeHints(input);
+
+  try {
+    // Use ai.generate (not definePrompt) so we can interpolate runtime
+    // style/grade hints into the system prompt without re-registering
+    // a named prompt every time.
+    const promptText = (PROMPT + styleGradeHint).replace(
+      /\{\{\{elementLabel\}\}\}/g, input.elementLabel
+    ).replace(
+      /\{\{\{elementType\}\}\}/g, input.elementType
+    ).replace(
+      /\{\{#each existingOptions\}\}\s*-\s*\{\{\{this\}\}\}\s*\{\{\/each\}\}/,
+      input.existingOptions.map(o => `  - ${o}`).join('\n')
+    );
+
+    const { output } = await ai.generate({
+      prompt: promptText,
       output: { schema: RandomElementGenerationOutputSchema },
-      prompt: PROMPT,
       config: {
         temperature: 1.0,
         safetySettings: [
@@ -76,17 +91,6 @@ const getPrompt = () => {
         ],
       },
     });
-  }
-  return _prompt;
-};
-
-export async function runRandomElementGeneration(
-  input: RandomElementGenerationInput
-): Promise<RandomElementGenerationOutput> {
-  const prompt = getPrompt();
-
-  try {
-    const { output } = await prompt(input);
     if (!output || !output.generatedText || output.generatedText.trim() === '') {
       console.warn(`AI returned no text for ${input.elementType}, using fallback.`);
       const fb = W1H_ELEMENTS[input.elementType as W1HKey]?.options || ['一個安全的點子'];

@@ -1,5 +1,6 @@
 import { z } from 'genkit';
 import { getAi } from '../genkit';
+import { StoryStyleSchema, GradeLevelSchema } from '../prompt-modifiers';
 
 export const ConsistencyCheckInputSchema = z.object({
   who: z.string(),
@@ -9,6 +10,8 @@ export const ConsistencyCheckInputSchema = z.object({
   why: z.string(),
   how: z.string(),
   turnstileToken: z.string().optional(),
+  style: StoryStyleSchema,
+  gradeLevel: GradeLevelSchema,
 });
 export type ConsistencyCheckInput = z.infer<typeof ConsistencyCheckInputSchema>;
 

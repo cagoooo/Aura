@@ -91,6 +91,20 @@ export default function RootLayout({
         <OnboardingDialog />
         <VersionWatcher />
         <Toaster />
+        {/*
+          Cloudflare Web Analytics — privacy-respecting, no cookies, free.
+          Set NEXT_PUBLIC_CF_ANALYTICS_TOKEN as a GitHub Secret to enable.
+          (Get the token from CF dashboard → Web Analytics → Add a site.)
+          Empty token means analytics is disabled — site still works.
+        */}
+        {process.env.NEXT_PUBLIC_CF_ANALYTICS_TOKEN && (
+          // eslint-disable-next-line @next/next/no-sync-scripts
+          <script
+            defer
+            src="https://static.cloudflareinsights.com/beacon.min.js"
+            data-cf-beacon={`{"token": "${process.env.NEXT_PUBLIC_CF_ANALYTICS_TOKEN}"}`}
+          />
+        )}
       </body>
     </html>
   );
