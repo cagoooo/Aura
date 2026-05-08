@@ -1249,7 +1249,7 @@ export default function InspirationGeneratorClient() {
               <h2 className="print-section-title">本故事的 5W1H 元素</h2>
               <dl>
                 {ALL_W1H_KEYS.map(key => (
-                  <div key={key} className="print-w1h-row">
+                  <div key={key} className="print-w1h-row" data-key={key}>
                     <dt>{W1H_ELEMENTS[key].label}</dt>
                     <dd>{w1hData[key].text || '—'}</dd>
                   </div>

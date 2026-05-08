@@ -162,6 +162,16 @@ body.live-mode .live-emphasize {
 
   body { background: white !important; }
 
+  /* CRITICAL: tell browser to actually print background colors and
+     gradients. Without this, Chrome/Edge default to "Background graphics
+     OFF" and our W1H color zones disappear. */
+  .print-area,
+  .print-area * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
   .print-area {
     position: absolute;
     left: 0;
@@ -176,91 +186,110 @@ body.live-mode .live-emphasize {
     background: white !important;
   }
 
-  /* Force readable black-on-white; remove web shadows / tints */
+  /* Reset web shadows and unwanted borders. Notice we DON'T blanket-
+     override color here — specific elements pick their own colors below. */
   .print-area * {
-    color: #111 !important;
-    background: transparent !important;
     text-shadow: none !important;
     box-shadow: none !important;
-    border-color: #ccc !important;
   }
 
-  /* Title hierarchy: synthesized story title is big & underlined */
+  /* ───── TITLE: navy text + orange accent bar + blue underline ─────
+     Visual: orange bar on the left (like a ribbon), blue underline,
+     subtle warm gradient fade. */
   .print-area .print-title {
     font-size: 22pt !important;
     font-weight: 800 !important;
-    line-height: 1.45 !important;
-    margin: 0 0 1.2em 0 !important;
-    padding-bottom: 0.5em !important;
-    border-bottom: 2px solid #333 !important;
+    line-height: 1.4 !important;
+    color: #1a4ca0 !important;
+    margin: 0 0 1.4em 0 !important;
+    padding: 0.4em 0 0.55em 0.75em !important;
+    border-left: 8px solid #FFA726 !important;
+    border-bottom: 3px solid #4285F4 !important;
+    background: linear-gradient(to right, #fff5e0 0%, transparent 35%) !important;
     letter-spacing: 0.02em;
+    page-break-after: avoid;
   }
 
-  /* Body paragraph: comfortable reading rhythm for Chinese */
+  /* ───── BODY: light blue tint + blue accent left border ─────
+     Looks like a narrative quote block. */
   .print-area .print-body {
     font-size: 13pt !important;
-    line-height: 2 !important;
-    margin: 0 0 1em 0 !important;
+    line-height: 2.0 !important;
+    color: #1a1a1a !important;
+    margin: 0 0 1.4em 0 !important;
+    padding: 0.7em 1em !important;
     text-align: justify !important;
     text-justify: inter-ideograph;
-    /* No first-line indent — modern Chinese typography on web doesn't, and
-       the paragraph break is enough visual separation */
+    border-left: 3px solid #4285F4 !important;
+    background: linear-gradient(to right, rgba(66,133,244,0.05), transparent 65%) !important;
+    orphans: 3;
+    widows: 3;
   }
 
-  /* Section heading inside print-only blocks (e.g. "本故事的 5W1H 元素") */
+  /* ───── SECTION TITLE (e.g. "本故事的 5W1H 元素"): blue gradient pill */
   .print-area .print-section-title {
-    font-size: 14pt !important;
+    font-size: 13pt !important;
     font-weight: 700 !important;
-    margin: 1.8em 0 0.7em 0 !important;
-    padding-bottom: 0.3em !important;
-    border-bottom: 1px solid #999 !important;
+    color: white !important;
+    margin: 1.8em 0 1em 0 !important;
+    padding: 0.55em 1.1em !important;
+    background: linear-gradient(135deg, #4285F4 0%, #6BA1F7 100%) !important;
+    border-radius: 6px !important;
+    letter-spacing: 0.03em;
+    page-break-after: avoid;
   }
 
-  /* W1H list rows */
+  /* ───── W1H ROWS: each row keyed to its on-screen card color ─────
+     Saturated enough to render on cheap printers; soft enough to read text
+     on top. Left border = primary hue, background = pale matching tint. */
   .print-area .print-w1h-row {
     display: flex !important;
     align-items: baseline;
     gap: 0.8em;
-    margin: 0.4em 0 !important;
+    margin: 0.45em 0 !important;
+    padding: 0.55em 0.9em !important;
+    border-radius: 5px !important;
+    border-left-style: solid !important;
+    border-left-width: 4px !important;
     page-break-inside: avoid;
   }
   .print-area .print-w1h-row dt,
   .print-area .print-w1h-row .print-w1h-label {
-    flex: 0 0 6em;
+    flex: 0 0 7em;
     font-weight: 700 !important;
     font-size: 11pt !important;
+    color: #1f2937 !important;
   }
   .print-area .print-w1h-row dd,
   .print-area .print-w1h-row .print-w1h-value {
     margin: 0 !important;
     flex: 1;
     font-size: 11pt !important;
-    line-height: 1.7 !important;
+    line-height: 1.75 !important;
+    color: #1f2937 !important;
   }
+  /* Six color themes mirroring the screen W1H_CARD_COLORS palette */
+  .print-area .print-w1h-row[data-key="who"]   { border-left-color: #0284c7 !important; background: #e0f2fe !important; }
+  .print-area .print-w1h-row[data-key="what"]  { border-left-color: #059669 !important; background: #d1fae5 !important; }
+  .print-area .print-w1h-row[data-key="when"]  { border-left-color: #d97706 !important; background: #fef3c7 !important; }
+  .print-area .print-w1h-row[data-key="where"] { border-left-color: #7c3aed !important; background: #ede9fe !important; }
+  .print-area .print-w1h-row[data-key="why"]   { border-left-color: #db2777 !important; background: #fce7f3 !important; }
+  .print-area .print-w1h-row[data-key="how"]   { border-left-color: #0d9488 !important; background: #ccfbf1 !important; }
 
-  /* Footer: source attribution at bottom */
+  /* ───── FOOTER: dual-color gradient line + subtle subdued text ───── */
   .print-area .print-footer-info {
     margin-top: 2.4em !important;
-    padding-top: 1em !important;
-    border-top: 1px solid #999 !important;
+    padding: 1em 0 0.4em 0 !important;
+    border-top: 2px solid transparent !important;
+    border-image: linear-gradient(90deg, #4285F4 0%, #FFA726 100%) 1 !important;
     font-size: 9pt !important;
-    color: #555 !important;
+    color: #6b7280 !important;
     text-align: center;
-    line-height: 1.6;
+    line-height: 1.7;
+    letter-spacing: 0.02em;
   }
 
-  /* Hide decoration that doesn't print well: SVG icons (lucide), pulsing
-     typewriter cursor, animated elements */
+  /* Hide screen-only decorations (icons, animated cursor, etc.) */
   .print-area svg { display: none !important; }
-  .print-area .animate-pulse,
-  .print-area [aria-hidden="true"].animate-pulse { display: none !important; }
-
-  /* Avoid orphaned title at page bottom */
-  .print-area .print-title {
-    page-break-after: avoid;
-  }
-  .print-area .print-body {
-    orphans: 3;
-    widows: 3;
-  }
+  .print-area .animate-pulse { display: none !important; }
 }
