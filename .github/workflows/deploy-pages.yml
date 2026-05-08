@@ -39,6 +39,8 @@ jobs:
           NEXT_PUBLIC_BASE_PATH: /Aura
           NEXT_PUBLIC_API_BASE: https://asia-east1-aura-2sg5o.cloudfunctions.net
           NEXT_PUBLIC_TURNSTILE_SITE_KEY: ${{ secrets.TURNSTILE_SITE_KEY }}
+          # Cache-bust og:image so FB/LINE re-crawl on each deploy
+          NEXT_PUBLIC_BUILD_ID: ${{ github.sha }}
         run: npm run build
 
       - name: Add .nojekyll

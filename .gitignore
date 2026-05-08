@@ -49,3 +49,6 @@ firestore-debug.log
 /.claude/
 /.agents/
 /.vscode/
+
+# OG / favicon source font (12 MB) — only the subset (~140 KB) is committed
+scripts/fonts/NotoSansTC-Bold.ttf
