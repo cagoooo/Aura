@@ -89,6 +89,20 @@ export const randomElementGenerate = (input: RandomElementGenerationInput) =>
 export const randomElementBulk = (input: RandomElementBulkInput) =>
   callFunction<RandomElementBulkOutput>('randomElementBulk', input);
 
+export interface GrammarImprovementBulkInput {
+  items: Array<{
+    elementType: W1HKey;
+    text: string;
+    elementLabel: string;
+  }>;
+  turnstileToken?: string;
+}
+export interface GrammarImprovementBulkOutput {
+  results: GrammarImprovementOutput[];
+}
+export const grammarImproveBulk = (input: GrammarImprovementBulkInput) =>
+  callFunction<GrammarImprovementBulkOutput>('grammarImproveBulk', input);
+
 export const grammarImprovement = (input: GrammarImprovementInput) =>
   callFunction<GrammarImprovementOutput>('grammarImprove', input);
 

@@ -5,7 +5,7 @@ import corsLib from 'cors';
 import type { Response } from 'express';
 
 import { runRandomElementGeneration } from './flows/random-element-generation';
-import { runGrammarImprovement } from './flows/grammar-improvement';
+import { runGrammarImprovement, type GrammarImprovementInput } from './flows/grammar-improvement';
 import { runConsistencyCheck } from './flows/consistency-check';
 import { runStorySynthesis } from './flows/story-synthesis';
 import { verifyTurnstileToken, TurnstileError } from './turnstile';
@@ -77,6 +77,40 @@ type BulkItem = {
 };
 type BulkInput = { items?: BulkItem[]; turnstileToken?: string };
 const MAX_BULK_ITEMS = 10;
+
+// Bulk grammar improvement: 6 parallel Gemini calls + 1 Turnstile token.
+// Speeds up "潤飾語法" from ~6s sequential to ~2-3s parallel.
+type GrammarBulkItem = Omit<GrammarImprovementInput, 'turnstileToken'>;
+type GrammarBulkInput = { items?: GrammarBulkItem[]; turnstileToken?: string };
+
+export const grammarImproveBulk = onRequest(
+  { secrets: SECRETS },
+  withCors(async (req, res) => {
+    if (req.method === 'OPTIONS') { res.status(204).send(''); return; }
+    if (req.method !== 'POST') {
+      res.status(405).json({ success: false, error: 'POST only' });
+      return;
+    }
+    const input = (req.body ?? {}) as GrammarBulkInput;
+    await verifyTurnstileToken(input.turnstileToken);
+
+    const items = Array.isArray(input.items) ? input.items : [];
+    if (items.length === 0 || items.length > MAX_BULK_ITEMS) {
+      res.status(400).json({ success: false, error: `items must be 1..${MAX_BULK_ITEMS}` });
+      return;
+    }
+
+    const results = await Promise.all(
+      items.map((item) =>
+        runGrammarImprovement(item).catch((e) => {
+          console.error('bulk grammar item failed:', item.elementType, e);
+          return { refinedText: item.text };  // fallback: return original on error
+        })
+      )
+    );
+    res.json({ success: true, data: { results } });
+  })
+);
 
 export const randomElementBulk = onRequest(
   { secrets: SECRETS },

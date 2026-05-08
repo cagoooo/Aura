@@ -7,6 +7,7 @@ import AppHeader from '@/components/app-header';
 import AppFooter from '@/components/app-footer';
 import FloatingAdButton from '@/components/floating-ad-button';
 import FloatingAssistantButton from '@/components/floating-assistant-button';
+import OnboardingDialog from '@/components/onboarding-dialog';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -86,6 +87,7 @@ export default function RootLayout({
         <AppFooter />
         <FloatingAdButton />
         <FloatingAssistantButton />
+        <OnboardingDialog />
         <Toaster />
       </body>
     </html>

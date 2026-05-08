@@ -1,10 +1,16 @@
 name: Deploy Cloud Functions
 
-# Manual-only by default. Once FIREBASE_SERVICE_ACCOUNT_AURA secret is set,
-# you can change `on:` to also include `push: paths: ['functions/**']` for
-# auto-deploy on backend changes.
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'functions/**'
+      - '.github/workflows/deploy-functions.yml'
   workflow_dispatch:
+
+concurrency:
+  group: functions-deploy
+  cancel-in-progress: false
 
 jobs:
   deploy:
@@ -26,8 +32,9 @@ jobs:
         working-directory: functions
         run: npm run build
 
-      - uses: w9jds/firebase-action@master
+      - name: Deploy to Firebase
+        uses: w9jds/firebase-action@master
         with:
-          args: deploy --only functions --project aura-2sg5o
+          args: deploy --only functions --project aura-2sg5o --force
         env:
           GCP_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_AURA }}

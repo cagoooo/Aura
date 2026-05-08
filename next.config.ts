@@ -10,8 +10,11 @@ const nextConfig: NextConfig = {
   basePath,
   assetPrefix: basePath || undefined,
   trailingSlash: true,
-  typescript: { ignoreBuildErrors: true },
-  eslint: { ignoreDuringBuilds: true },
+  // typecheck currently clean — drop the safety net so future TS regressions
+  // fail the build instead of silently shipping. Add back temporarily if
+  // unblocking a critical hotfix.
+  typescript: { ignoreBuildErrors: false },
+  eslint: { ignoreDuringBuilds: false },
   images: {
     unoptimized: true,
     remotePatterns: [

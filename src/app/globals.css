@@ -106,3 +106,31 @@
     /* Removed font-family: Arial, Helvetica, sans-serif; to let layout.tsx fonts take precedence */
   }
 }
+
+/* ========== PRINT MEDIA ==========
+   When user invokes browser print (Ctrl+P or our 列印 button), only the
+   synthesized story card stays visible. Everything else (header, cards
+   grid, floating buttons, footer, dialogs) is hidden so the resulting
+   PDF is a single clean page of the generated story.
+*/
+@media print {
+  body * { visibility: hidden; }
+  .print-area, .print-area * { visibility: visible; }
+  .print-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 24px;
+    box-shadow: none !important;
+    border: none !important;
+  }
+  .no-print { display: none !important; }
+  /* Force black-on-white to save toner; let prose breathe */
+  @page { margin: 1.5cm; }
+  .print-area * {
+    color: #000 !important;
+    background: transparent !important;
+  }
+}

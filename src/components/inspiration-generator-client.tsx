@@ -10,12 +10,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import {
   consistencyCheck, type ConsistencyCheckInput, type ConsistencyCheckOutput,
-  grammarImprovement, type GrammarImprovementInput, type GrammarImprovementOutput,
-  storySynthesis, type StorySynthesisInput, type StorySynthesisOutput,
-  randomElementGenerate, type RandomElementGenerationInput, type RandomElementGenerationOutput,
+  storySynthesis, type StorySynthesisInput,
+  randomElementGenerate, type RandomElementGenerationInput,
   randomElementBulk,
+  grammarImproveBulk,
 } from '@/lib/api';
-import { Loader2, CheckCircle2, Shuffle, BookText, Copy, FileText, Check, ThumbsUp, Wand2 } from 'lucide-react';
+import { Loader2, CheckCircle2, Shuffle, BookText, Copy, FileText, Check, ThumbsUp, Wand2, Printer, ChevronDown } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -26,6 +26,12 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import confetti from 'canvas-confetti';
 import { cn, assetPath } from '@/lib/utils';
 import TurnstileWidget, { type TurnstileWidgetHandle } from '@/components/turnstile-widget';
@@ -144,6 +150,8 @@ export default function InspirationGeneratorClient() {
   const [grammarProgress, setGrammarProgress] = useState(0);
   const [consistencyResult, setConsistencyResult] = useState<ConsistencyCheckOutput | null>(null);
   const [synthesizedContent, setSynthesizedContent] = useState<SynthesizedContent | null>(null);
+  const [typewriterIndex, setTypewriterIndex] = useState(0);
+  const typewriterIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   
   const [refinementChanges, setRefinementChanges] = useState<RefinementChange[]>([]);
   const [isRefinementDialogOpen, setIsRefinementDialogOpen] = useState(false);
@@ -317,43 +325,36 @@ export default function InspirationGeneratorClient() {
     const originalW1hData = JSON.parse(JSON.stringify(w1hData)) as W1HState; 
     const newW1hData = JSON.parse(JSON.stringify(w1hData)) as W1HState; 
     
-    const elementsToRefine = ALL_W1H_KEYS;
-    const totalToRefine = elementsToRefine.length;
-    let processedCount = 0;
-    
-    if (totalToRefine === 0) {
-        setIsLoading(prev => ({ ...prev, grammar: false }));
-        return;
+    const elementsToRefine = ALL_W1H_KEYS.filter(k => newW1hData[k].text.trim() !== '');
+    if (elementsToRefine.length === 0) {
+      setIsLoading(prev => ({ ...prev, grammar: false }));
+      return;
     }
-    setGrammarProgress(1); 
+    setGrammarProgress(15);
 
-    for (let i = 0; i < totalToRefine; i++) {
-      const key = elementsToRefine[i];
-      const originalText = newW1hData[key].text;
-      if (!originalText.trim()) { 
-        processedCount++;
-        setGrammarProgress(Math.min((processedCount / totalToRefine) * 100, 100));
-        continue;
-      }
-      try {
-        const turnstileToken = await getTurnstileToken();
-        const input: GrammarImprovementInput = {
-          elementType: key,
-          text: originalText,
-          elementLabel: W1H_ELEMENTS[key].label,
-          turnstileToken,
-        };
-        const result = await grammarImprovement(input);
-        newW1hData[key] = { ...newW1hData[key], text: result.refinedText };
-      } catch (error) {
-        console.error(`Grammar refinement error for ${key}:`, error);
-        toast({ variant: "destructive", title: `「${W1H_ELEMENTS[key].label}」潤飾失敗`, description: "服務發生錯誤，該項目保留原內容。" });
-      } finally {
-        processedCount++;
-        setGrammarProgress(Math.min((processedCount / totalToRefine) * 100, 100));
-      }
+    // Bulk: 1 Turnstile token + parallel server-side Gemini calls.
+    try {
+      const turnstileToken = await getTurnstileToken();
+      setGrammarProgress(40);
+      const items = elementsToRefine.map(key => ({
+        elementType: key,
+        text: newW1hData[key].text,
+        elementLabel: W1H_ELEMENTS[key].label,
+      }));
+      const { results } = await grammarImproveBulk({ items, turnstileToken });
+      setGrammarProgress(95);
+      elementsToRefine.forEach((key, i) => {
+        const refined = results[i]?.refinedText;
+        if (typeof refined === 'string') {
+          newW1hData[key] = { ...newW1hData[key], text: refined };
+        }
+      });
+    } catch (error) {
+      console.error('Bulk grammar refinement failed:', error);
+      toast({ variant: "destructive", title: "潤飾語法失敗", description: "AI 服務暫時不可用，所有項目保留原內容。" });
     }
-    setW1hData(newW1hData); 
+    setGrammarProgress(100);
+    setW1hData(newW1hData);
 
     const changesMade: RefinementChange[] = [];
     let actualModificationsCount = 0;
@@ -388,15 +389,15 @@ export default function InspirationGeneratorClient() {
       }
       setIsRefinementDialogOpen(true); 
       toast({ variant: "success", title: "語法潤飾完畢", description: `已為 ${actualModificationsCount} 個項目提升語法與流暢度。請查看詳細變更。` });
-    } else if (totalToRefine > 0 && ALL_W1H_KEYS.some(k => originalW1hData[k].text.trim() !== '')) { 
+    } else if (elementsToRefine.length > 0 && ALL_W1H_KEYS.some(k => originalW1hData[k].text.trim() !== '')) { 
       setGrammarButtonFeedbackIcon('thumbsUp');
       toast({ variant: "success", title: "語法檢查完畢", description: "所有項目的語法均已相當通順，無需調整。" });
-    } else if (totalToRefine > 0) { 
+    } else if (elementsToRefine.length > 0) { 
       toast({ variant: "success", title: "語法潤飾", description: "沒有可潤飾的內容。" });
       setGrammarButtonFeedbackIcon('wand'); 
     }
 
-    if(actualModificationsCount > 0 || (totalToRefine > 0 && ALL_W1H_KEYS.some(k => originalW1hData[k].text.trim() !== ''))){
+    if(actualModificationsCount > 0 || (elementsToRefine.length > 0 && ALL_W1H_KEYS.some(k => originalW1hData[k].text.trim() !== ''))){
       setTimeout(() => {
         setGrammarButtonFeedbackIcon('wand');
       }, 3000);
@@ -477,6 +478,21 @@ export default function InspirationGeneratorClient() {
       storyCardKey.current += 1; 
 
       if (result && result.story && result.title && !errorTitles.includes(result.title)) {
+        // Start typewriter animation: ~3 chars per 30ms tick → 6-8s for typical
+        // story length. Feels like AI is "thinking and writing".
+        if (typewriterIntervalRef.current) clearInterval(typewriterIntervalRef.current);
+        setTypewriterIndex(0);
+        const fullLen = result.story.length;
+        typewriterIntervalRef.current = setInterval(() => {
+          setTypewriterIndex(prev => {
+            const next = Math.min(prev + 3, fullLen);
+            if (next >= fullLen && typewriterIntervalRef.current) {
+              clearInterval(typewriterIntervalRef.current);
+              typewriterIntervalRef.current = null;
+            }
+            return next;
+          });
+        }, 30);
         try {
            confetti({
             particleCount: 250, 
@@ -519,17 +535,144 @@ export default function InspirationGeneratorClient() {
     }
   }, [synthesizedContent]);
 
-  const handleCopySynthesizedStory = async (content: SynthesizedContent | null) => {
+  useEffect(() => {
+    // Cleanup typewriter interval on unmount
+    return () => {
+      if (typewriterIntervalRef.current) clearInterval(typewriterIntervalRef.current);
+    };
+  }, []);
+
+  // Keyboard shortcuts. Only fire when no input/textarea is focused, no
+  // dialog is open, and no global operation is in flight.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.altKey || e.metaKey) return;
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
+      if (isRefinementDialogOpen) return;
+      const busy = isLoading.randomAll || isLoading.grammar || isLoading.consistency || isLoading.synthesis;
+      if (busy) return;
+
+      // 1-6 → toggle lock on the corresponding card
+      if (/^[1-6]$/.test(e.key)) {
+        const idx = parseInt(e.key, 10) - 1;
+        const key = ALL_W1H_KEYS[idx];
+        if (key) {
+          e.preventDefault();
+          handleToggleLock(key);
+        }
+        return;
+      }
+      // letter shortcuts (case-insensitive)
+      const k = e.key.toLowerCase();
+      if (e.code === 'Space' || k === ' ') {
+        e.preventDefault();
+        handleRandomAll();
+      } else if (k === 'g') {
+        e.preventDefault();
+        handleGrammarRefinement();
+      } else if (k === 'c') {
+        e.preventDefault();
+        handleConsistencyCheck();
+      } else if (k === 's') {
+        e.preventDefault();
+        handleStorySynthesis();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoading, isRefinementDialogOpen]);
+
+  type CopyFormat = 'plain' | 'markdown' | 'line' | 'w1h-only';
+
+  const buildCopyText = (content: SynthesizedContent, format: CopyFormat): string => {
+    const w1hLines = ALL_W1H_KEYS.map(k => `${W1H_ELEMENTS[k].label}：${w1hData[k].text || '—'}`);
+    switch (format) {
+      case 'plain':
+        return `${content.title}\n\n${content.story}`;
+      case 'markdown':
+        return [
+          `# ${content.title}`,
+          '',
+          '## 5W1H 元素',
+          ...w1hLines.map(l => `- ${l}`),
+          '',
+          '## 故事',
+          content.story,
+          '',
+          '---',
+          '由 [5W1H 靈感發射器](https://cagoooo.github.io/Aura/) 產出',
+        ].join('\n');
+      case 'line':
+        return [
+          `📖 ${content.title}`,
+          '',
+          '✨ 5W1H 元素：',
+          ...w1hLines.map(l => `・${l}`),
+          '',
+          '📝 故事：',
+          content.story,
+          '',
+          '🚀 用 5W1H 靈感發射器產出',
+          'https://cagoooo.github.io/Aura/',
+        ].join('\n');
+      case 'w1h-only':
+        return w1hLines.join('\n');
+    }
+  };
+
+  const handleCopySynthesizedStory = async (
+    content: SynthesizedContent | null,
+    format: CopyFormat = 'plain'
+  ) => {
     if (!content || !content.story) return;
-    const textToCopy = `${content.title}\n\n${content.story}`;
+    const textToCopy = buildCopyText(content, format);
+    const formatLabel: Record<CopyFormat, string> = {
+      plain: '純文字',
+      markdown: 'Markdown',
+      line: 'LINE 訊息',
+      'w1h-only': '6 個 W1H',
+    };
     try {
       await navigator.clipboard.writeText(textToCopy);
-      toast({ variant: "success", title: "複製成功", description: "故事靈感已複製到剪貼簿！" });
+      toast({ variant: "success", title: "複製成功", description: `已複製成「${formatLabel[format]}」格式。` });
     } catch (err) {
       console.error('Failed to copy text: ', err);
       toast({ variant: "destructive", title: "複製失敗", description: "無法複製內容，請再試一次。" });
     }
   };
+
+  // CopyMenu must be defined inside component because handleCopy closes over state
+  const CopyMenu = ({ onCopy }: { onCopy: (f: CopyFormat) => void }) => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          size="sm"
+          aria-label="複製選項"
+          className="text-primary hover:text-primary/80 gap-1"
+        >
+          <Copy className="h-4 w-4" />
+          <ChevronDown className="h-3 w-3" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="min-w-[200px]">
+        <DropdownMenuItem onClick={() => onCopy('plain')}>
+          📄 純文字（標題 + 故事）
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => onCopy('markdown')}>
+          📝 Markdown（含 6 個 W1H）
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => onCopy('line')}>
+          💬 LINE 訊息（emoji + 連結）
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => onCopy('w1h-only')}>
+          🎯 只複製 6 個 W1H
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 
   const handleCopyConsistencySuggestions = async (suggestions: string[] | undefined) => {
     if (!suggestions || suggestions.length === 0) {
@@ -806,28 +949,48 @@ export default function InspirationGeneratorClient() {
       )}
 
       {synthesizedContent && (
-        <Card 
+        <Card
           ref={synthesizedStoryCardRef}
-          key={`story-card-${storyCardKey.current}`} 
-          className="mb-8 rounded-lg shadow-xl border border-primary/30 bg-card max-w-3xl mx-auto animate-in fade-in-0 zoom-in-95 slide-in-from-bottom-10 duration-700 ease-out"
+          key={`story-card-${storyCardKey.current}`}
+          className="print-area mb-8 rounded-lg shadow-xl border border-primary/30 bg-card max-w-3xl mx-auto animate-in fade-in-0 zoom-in-95 slide-in-from-bottom-10 duration-700 ease-out"
         >
           <CardHeader className="flex flex-row items-center justify-between p-6 pb-2">
              <div className="flex items-center gap-3 animate-in fade-in-0 slide-in-from-bottom-5 duration-500 ease-out delay-300 fill-mode-both">
               <FileText className="h-6 w-6 text-primary" />
               <CardTitle className="text-xl font-semibold text-primary">{synthesizedContent.title || '合成故事靈感'}</CardTitle>
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => handleCopySynthesizedStory(synthesizedContent)}
-              aria-label="複製故事靈感"
-              className="text-primary hover:text-primary/80 animate-in fade-in-0 duration-500 ease-out delay-300 fill-mode-both"
-            >
-              <Copy className="h-5 w-5" />
-            </Button>
+            <div className="flex items-center gap-1 no-print">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  // Skip the typewriter so the printed PDF shows the full story.
+                  if (typewriterIntervalRef.current) {
+                    clearInterval(typewriterIntervalRef.current);
+                    typewriterIntervalRef.current = null;
+                  }
+                  if (synthesizedContent) setTypewriterIndex(synthesizedContent.story.length);
+                  // requestAnimationFrame so React commits before print dialog opens
+                  requestAnimationFrame(() => window.print());
+                }}
+                aria-label="列印 / 匯出 PDF"
+                title="列印 / 匯出 PDF"
+                className="text-primary hover:text-primary/80"
+              >
+                <Printer className="h-5 w-5" />
+              </Button>
+              <CopyMenu
+                onCopy={(format) => handleCopySynthesizedStory(synthesizedContent, format)}
+              />
+            </div>
           </CardHeader>
           <CardContent className="p-6 pt-4 animate-in fade-in-0 slide-in-from-bottom-5 duration-500 ease-out delay-500 fill-mode-both">
-            <p className="text-base leading-relaxed text-foreground whitespace-pre-wrap">{synthesizedContent.story}</p>
+            <p className="text-base leading-relaxed text-foreground whitespace-pre-wrap">
+              {synthesizedContent.story.slice(0, typewriterIndex)}
+              {typewriterIndex < synthesizedContent.story.length && (
+                <span className="inline-block w-[2px] h-5 bg-primary align-middle ml-0.5 animate-pulse" aria-hidden="true" />
+              )}
+            </p>
           </CardContent>
         </Card>
       )}
