@@ -1197,7 +1197,7 @@ export default function InspirationGeneratorClient() {
           <CardHeader className="flex flex-row items-center justify-between p-6 pb-2">
              <div className="flex items-center gap-3 animate-in fade-in-0 slide-in-from-bottom-5 duration-500 ease-out delay-300 fill-mode-both">
               <FileText className="h-6 w-6 text-primary" />
-              <CardTitle className="text-xl font-semibold text-primary">{synthesizedContent.title || '合成故事靈感'}</CardTitle>
+              <CardTitle className="print-title text-xl font-semibold text-primary">{synthesizedContent.title || '合成故事靈感'}</CardTitle>
             </div>
             <div className="flex items-center gap-1 no-print">
               <Button
@@ -1237,12 +1237,28 @@ export default function InspirationGeneratorClient() {
             </div>
           </CardHeader>
           <CardContent className="p-6 pt-4 animate-in fade-in-0 slide-in-from-bottom-5 duration-500 ease-out delay-500 fill-mode-both">
-            <p className="text-base leading-relaxed text-foreground whitespace-pre-wrap">
+            <p className="print-body text-base leading-relaxed text-foreground whitespace-pre-wrap">
               {synthesizedContent.story.slice(0, typewriterIndex)}
               {typewriterIndex < synthesizedContent.story.length && (
                 <span className="inline-block w-[2px] h-5 bg-primary align-middle ml-0.5 animate-pulse" aria-hidden="true" />
               )}
             </p>
+
+            {/* Print-only: full W1H reference + source footer */}
+            <div className="print-only">
+              <h2 className="print-section-title">本故事的 5W1H 元素</h2>
+              <dl>
+                {ALL_W1H_KEYS.map(key => (
+                  <div key={key} className="print-w1h-row">
+                    <dt>{W1H_ELEMENTS[key].label}</dt>
+                    <dd>{w1hData[key].text || '—'}</dd>
+                  </div>
+                ))}
+              </dl>
+              <p className="print-footer-info">
+                由 5W1H 靈感發射器 產出　|　https://cagoooo.github.io/Aura/　|　桃園市石門國小資訊組 阿凱老師 設計
+              </p>
+            </div>
           </CardContent>
         </Card>
       )}

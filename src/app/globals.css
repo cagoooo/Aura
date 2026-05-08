@@ -135,30 +135,132 @@ body.live-mode .live-emphasize {
   box-shadow: 0 4px 18px -4px rgba(66,133,244,0.25) !important;
 }
 
+/* ========== PRINT-ONLY UTILITIES ==========
+   Elements with .print-only are hidden on screen but visible when printing.
+   Use for W1H reference list and source footer that we don't want cluttering
+   the live UI but absolutely DO want on the printed PDF.
+*/
+.print-only { display: none; }
+
 /* ========== PRINT MEDIA ==========
-   When user invokes browser print (Ctrl+P or our 列印 button), only the
-   synthesized story card stays visible. Everything else (header, cards
-   grid, floating buttons, footer, dialogs) is hidden so the resulting
-   PDF is a single clean page of the generated story.
+   Tuned for A4 portrait with traditional Chinese reading conventions:
+   wide line-height for breathing room, generous title hierarchy, indented
+   body paragraphs, and a source footer for archival.
 */
 @media print {
+  /* Hide everything, then turn .print-area subtree back on */
   body * { visibility: hidden; }
   .print-area, .print-area * { visibility: visible; }
+  .print-only { display: block !important; }
+  .no-print { display: none !important; }
+
+  /* @page handles margins; the card itself stretches edge-to-edge */
+  @page {
+    margin: 2cm 1.8cm;
+    size: A4 portrait;
+  }
+
+  body { background: white !important; }
+
   .print-area {
     position: absolute;
     left: 0;
     top: 0;
-    width: 100%;
-    margin: 0;
-    padding: 24px;
+    right: 0;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
     box-shadow: none !important;
     border: none !important;
+    background: white !important;
   }
-  .no-print { display: none !important; }
-  /* Force black-on-white to save toner; let prose breathe */
-  @page { margin: 1.5cm; }
+
+  /* Force readable black-on-white; remove web shadows / tints */
   .print-area * {
-    color: #000 !important;
+    color: #111 !important;
     background: transparent !important;
+    text-shadow: none !important;
+    box-shadow: none !important;
+    border-color: #ccc !important;
+  }
+
+  /* Title hierarchy: synthesized story title is big & underlined */
+  .print-area .print-title {
+    font-size: 22pt !important;
+    font-weight: 800 !important;
+    line-height: 1.45 !important;
+    margin: 0 0 1.2em 0 !important;
+    padding-bottom: 0.5em !important;
+    border-bottom: 2px solid #333 !important;
+    letter-spacing: 0.02em;
+  }
+
+  /* Body paragraph: comfortable reading rhythm for Chinese */
+  .print-area .print-body {
+    font-size: 13pt !important;
+    line-height: 2 !important;
+    margin: 0 0 1em 0 !important;
+    text-align: justify !important;
+    text-justify: inter-ideograph;
+    /* No first-line indent — modern Chinese typography on web doesn't, and
+       the paragraph break is enough visual separation */
+  }
+
+  /* Section heading inside print-only blocks (e.g. "本故事的 5W1H 元素") */
+  .print-area .print-section-title {
+    font-size: 14pt !important;
+    font-weight: 700 !important;
+    margin: 1.8em 0 0.7em 0 !important;
+    padding-bottom: 0.3em !important;
+    border-bottom: 1px solid #999 !important;
+  }
+
+  /* W1H list rows */
+  .print-area .print-w1h-row {
+    display: flex !important;
+    align-items: baseline;
+    gap: 0.8em;
+    margin: 0.4em 0 !important;
+    page-break-inside: avoid;
+  }
+  .print-area .print-w1h-row dt,
+  .print-area .print-w1h-row .print-w1h-label {
+    flex: 0 0 6em;
+    font-weight: 700 !important;
+    font-size: 11pt !important;
+  }
+  .print-area .print-w1h-row dd,
+  .print-area .print-w1h-row .print-w1h-value {
+    margin: 0 !important;
+    flex: 1;
+    font-size: 11pt !important;
+    line-height: 1.7 !important;
+  }
+
+  /* Footer: source attribution at bottom */
+  .print-area .print-footer-info {
+    margin-top: 2.4em !important;
+    padding-top: 1em !important;
+    border-top: 1px solid #999 !important;
+    font-size: 9pt !important;
+    color: #555 !important;
+    text-align: center;
+    line-height: 1.6;
+  }
+
+  /* Hide decoration that doesn't print well: SVG icons (lucide), pulsing
+     typewriter cursor, animated elements */
+  .print-area svg { display: none !important; }
+  .print-area .animate-pulse,
+  .print-area [aria-hidden="true"].animate-pulse { display: none !important; }
+
+  /* Avoid orphaned title at page bottom */
+  .print-area .print-title {
+    page-break-after: avoid;
+  }
+  .print-area .print-body {
+    orphans: 3;
+    widows: 3;
   }
 }

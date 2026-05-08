@@ -102,16 +102,33 @@ export default function SharedStoryView({ storyId, basePath }: Props) {
         <CardHeader className="p-6 pb-2">
           <div className="flex items-center gap-3">
             <FileText className="h-6 w-6 text-primary" />
-            <CardTitle className="text-2xl font-semibold text-primary">{story.title}</CardTitle>
+            <CardTitle className="print-title text-2xl font-semibold text-primary">{story.title}</CardTitle>
           </div>
           {createdAt && (
-            <p className="text-sm text-muted-foreground mt-2">分享於 {createdAt}</p>
+            <p className="text-sm text-muted-foreground mt-2 no-print">分享於 {createdAt}</p>
           )}
         </CardHeader>
         <CardContent className="p-6 pt-4">
-          <p className="text-base leading-relaxed text-foreground whitespace-pre-wrap">
+          <p className="print-body text-base leading-relaxed text-foreground whitespace-pre-wrap">
             {story.story}
           </p>
+
+          {/* Print-only: full W1H reference + source footer */}
+          <div className="print-only">
+            <h2 className="print-section-title">本故事的 5W1H 元素</h2>
+            <dl>
+              {ALL_W1H_KEYS.map(key => (
+                <div key={key} className="print-w1h-row">
+                  <dt>{W1H_ELEMENTS[key].label}</dt>
+                  <dd>{story.w1h[key] || '—'}</dd>
+                </div>
+              ))}
+            </dl>
+            <p className="print-footer-info">
+              由 5W1H 靈感發射器 產出　|　https://cagoooo.github.io/Aura/　|　桃園市石門國小資訊組 阿凱老師 設計
+              {createdAt && <><br/>分享於 {createdAt}</>}
+            </p>
+          </div>
         </CardContent>
       </Card>
 
