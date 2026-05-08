@@ -37,7 +37,7 @@ const TURNSTILE_SCRIPT_URL =
   'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
 
 export interface TurnstileWidgetHandle {
-  /** Get a fresh Turnstile token. Returns undefined if Turnstile is not configured. */
+  /** Get a fresh Turnstile token. Returns undefined only if Turnstile is not configured. */
   getToken: () => Promise<string | undefined>;
 }
 
@@ -73,6 +73,15 @@ const TurnstileWidget = forwardRef<TurnstileWidgetHandle>((_props, ref) => {
     reject: (err: Error) => void;
   }[]>([]);
 
+  // Resolved once the widget is rendered & ready to execute().
+  // getToken() awaits this before calling execute().
+  const readyResolveRef = useRef<(() => void) | null>(null);
+  const readyPromiseRef = useRef<Promise<void>>(
+    new Promise<void>((resolve) => {
+      readyResolveRef.current = resolve;
+    })
+  );
+
   const flushPending = (
     method: 'resolve' | 'reject',
     payload: string | Error
@@ -86,9 +95,13 @@ const TurnstileWidget = forwardRef<TurnstileWidgetHandle>((_props, ref) => {
   };
 
   useEffect(() => {
-    if (!SITE_KEY) return;
+    if (!SITE_KEY) {
+      // No site key configured — mark "ready" so getToken returns undefined
+      // immediately instead of hanging.
+      readyResolveRef.current?.();
+      return;
+    }
     let cancelled = false;
-    const id = widgetIdRef.current;
 
     ensureScript()
       .then(() => {
@@ -107,19 +120,21 @@ const TurnstileWidget = forwardRef<TurnstileWidgetHandle>((_props, ref) => {
             }
           },
         });
+        // Widget is rendered — unblock pending getToken() callers.
+        readyResolveRef.current?.();
       })
       .catch((e) => {
         console.warn('Turnstile script failed to load:', e);
+        // Resolve anyway so getToken doesn't hang indefinitely; it will
+        // return undefined and the server will reject the request.
+        readyResolveRef.current?.();
       });
 
     return () => {
       cancelled = true;
+      const id = widgetIdRef.current;
       if (id && window.turnstile) {
-        try {
-          window.turnstile.remove(id);
-        } catch {
-          // ignore
-        }
+        try { window.turnstile.remove(id); } catch { /* ignore */ }
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -127,15 +142,19 @@ const TurnstileWidget = forwardRef<TurnstileWidgetHandle>((_props, ref) => {
 
   const getToken = useCallback(async (): Promise<string | undefined> => {
     if (!SITE_KEY) return undefined;
+
+    // Wait until the widget has finished rendering. Bound by 10s so we don't
+    // hang forever if the script is blocked by an extension.
+    await Promise.race([
+      readyPromiseRef.current,
+      new Promise<void>((resolve) => setTimeout(resolve, 10_000)),
+    ]);
+
     if (!window.turnstile || !widgetIdRef.current) {
-      // Widget not yet initialized — wait briefly for script load.
-      try {
-        await ensureScript();
-      } catch {
-        return undefined;
-      }
-      if (!window.turnstile || !widgetIdRef.current) return undefined;
+      console.warn('Turnstile widget not ready after wait — skipping token.');
+      return undefined;
     }
+
     return new Promise<string>((resolve, reject) => {
       pendingResolversRef.current.push({ resolve, reject });
       try {
