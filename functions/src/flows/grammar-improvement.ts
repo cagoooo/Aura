@@ -31,19 +31,25 @@ Return the improved text in the following JSON format:
 }
 `;
 
+let _prompt: any = null;
+const getPrompt = () => {
+  if (!_prompt) {
+    _prompt = getAi().definePrompt({
+      name: 'grammarImprovementPrompt',
+      input: { schema: GrammarImprovementInputSchema },
+      output: { schema: GrammarImprovementOutputSchema },
+      prompt: PROMPT,
+    });
+  }
+  return _prompt;
+};
+
 export async function runGrammarImprovement(
   input: GrammarImprovementInput
 ): Promise<GrammarImprovementOutput> {
   if (!input.text.trim()) return { refinedText: input.text };
 
-  const ai = getAi();
-  const prompt = ai.definePrompt({
-    name: 'grammarImprovementPrompt',
-    input: { schema: GrammarImprovementInputSchema },
-    output: { schema: GrammarImprovementOutputSchema },
-    prompt: PROMPT,
-  });
-
+  const prompt = getPrompt();
   const { output } = await prompt(input);
   if (!output || typeof output.refinedText === 'undefined') {
     return { refinedText: input.text };

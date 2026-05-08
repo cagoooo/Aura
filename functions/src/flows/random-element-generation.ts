@@ -56,25 +56,34 @@ Or for '何事 (What)':
 }
 `;
 
+// Lazy-init prompt cache: definePrompt registers under a name; calling it
+// every invocation produces "already has an entry" warnings. Cache once.
+let _prompt: any = null;
+const getPrompt = () => {
+  if (!_prompt) {
+    _prompt = getAi().definePrompt({
+      name: 'randomElementGenerationPrompt',
+      input: { schema: RandomElementGenerationInputSchema },
+      output: { schema: RandomElementGenerationOutputSchema },
+      prompt: PROMPT,
+      config: {
+        temperature: 1.0,
+        safetySettings: [
+          { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_LOW_AND_ABOVE' },
+          { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_LOW_AND_ABOVE' },
+          { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_LOW_AND_ABOVE' },
+          { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_LOW_AND_ABOVE' },
+        ],
+      },
+    });
+  }
+  return _prompt;
+};
+
 export async function runRandomElementGeneration(
   input: RandomElementGenerationInput
 ): Promise<RandomElementGenerationOutput> {
-  const ai = getAi();
-  const prompt = ai.definePrompt({
-    name: 'randomElementGenerationPrompt',
-    input: { schema: RandomElementGenerationInputSchema },
-    output: { schema: RandomElementGenerationOutputSchema },
-    prompt: PROMPT,
-    config: {
-      temperature: 1.0,
-      safetySettings: [
-        { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_LOW_AND_ABOVE' },
-        { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_LOW_AND_ABOVE' },
-        { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_LOW_AND_ABOVE' },
-        { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_LOW_AND_ABOVE' },
-      ],
-    },
-  });
+  const prompt = getPrompt();
 
   try {
     const { output } = await prompt(input);

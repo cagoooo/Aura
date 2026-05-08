@@ -59,17 +59,23 @@ If you have another separate issue with 'When', it would be a *new string* in th
 Format your output as a JSON object matching the schema.
 `;
 
+let _prompt: any = null;
+const getPrompt = () => {
+  if (!_prompt) {
+    _prompt = getAi().definePrompt({
+      name: 'consistencyCheckPrompt',
+      input: { schema: ConsistencyCheckInputSchema },
+      output: { schema: ConsistencyCheckOutputSchema },
+      prompt: PROMPT,
+    });
+  }
+  return _prompt;
+};
+
 export async function runConsistencyCheck(
   input: ConsistencyCheckInput
 ): Promise<ConsistencyCheckOutput> {
-  const ai = getAi();
-  const prompt = ai.definePrompt({
-    name: 'consistencyCheckPrompt',
-    input: { schema: ConsistencyCheckInputSchema },
-    output: { schema: ConsistencyCheckOutputSchema },
-    prompt: PROMPT,
-  });
-
+  const prompt = getPrompt();
   const { output } = await prompt(input);
   if (!output || !output.suggestions) {
     console.error('Consistency check response missing suggestions:', input);

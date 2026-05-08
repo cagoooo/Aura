@@ -10,7 +10,9 @@ export function getAi() {
   if (!_ai) {
     _ai = genkit({
       plugins: [googleAI({ apiKey: process.env.GEMINI_API_KEY })],
-      model: 'googleai/gemini-2.0-flash',
+      // gemini-2.0-flash was deprecated 2026-04 ("not available to new users").
+      // 2.5-flash is current free-tier default.
+      model: 'googleai/gemini-2.5-flash',
     });
   }
   return _ai;

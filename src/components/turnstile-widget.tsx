@@ -82,16 +82,23 @@ const TurnstileWidget = forwardRef<TurnstileWidgetHandle>((_props, ref) => {
     })
   );
 
-  const flushPending = (
+  // Serialization queue: at most one execute() call in-flight at a time.
+  // Without this, parallel getToken() callers would all receive the SAME
+  // token from the single shared widget, and the server's siteverify
+  // would reject duplicates with `timeout-or-duplicate`.
+  const tokenQueueRef = useRef<Promise<unknown>>(Promise.resolve());
+
+  // FIFO single-shot resolver — only the head pending resolver claims each
+  // callback fire. Earlier flush-all behavior caused N parallel callers to
+  // receive the same token (the bug above).
+  const flushNextPending = (
     method: 'resolve' | 'reject',
     payload: string | Error
   ) => {
-    const queue = pendingResolversRef.current;
-    pendingResolversRef.current = [];
-    queue.forEach((p) => {
-      if (method === 'resolve') p.resolve(payload as string);
-      else p.reject(payload as Error);
-    });
+    const next = pendingResolversRef.current.shift();
+    if (!next) return;
+    if (method === 'resolve') next.resolve(payload as string);
+    else next.reject(payload as Error);
   };
 
   useEffect(() => {
@@ -111,9 +118,9 @@ const TurnstileWidget = forwardRef<TurnstileWidgetHandle>((_props, ref) => {
           size: 'invisible',
           execution: 'execute',
           appearance: 'interaction-only',
-          callback: (token) => flushPending('resolve', token),
+          callback: (token) => flushNextPending('resolve', token),
           'error-callback': (code) =>
-            flushPending('reject', new Error(`Turnstile error: ${code ?? 'unknown'}`)),
+            flushNextPending('reject', new Error(`Turnstile error: ${code ?? 'unknown'}`)),
           'expired-callback': () => {
             if (widgetIdRef.current && window.turnstile) {
               window.turnstile.reset(widgetIdRef.current);
@@ -155,19 +162,29 @@ const TurnstileWidget = forwardRef<TurnstileWidgetHandle>((_props, ref) => {
       return undefined;
     }
 
-    return new Promise<string>((resolve, reject) => {
-      pendingResolversRef.current.push({ resolve, reject });
-      try {
-        window.turnstile!.reset(widgetIdRef.current!);
-        window.turnstile!.execute(widgetIdRef.current!);
-      } catch (e) {
-        const err = e instanceof Error ? e : new Error('Turnstile execute failed');
-        pendingResolversRef.current = pendingResolversRef.current.filter(
-          (p) => p.reject !== reject
-        );
-        reject(err);
-      }
-    });
+    // Chain onto the queue so concurrent callers each get a fresh token
+    // (no shared/duplicated tokens that would 403 on the server).
+    const myTurn = tokenQueueRef.current.then(
+      () =>
+        new Promise<string>((resolve, reject) => {
+          pendingResolversRef.current.push({ resolve, reject });
+          try {
+            window.turnstile!.reset(widgetIdRef.current!);
+            window.turnstile!.execute(widgetIdRef.current!);
+          } catch (e) {
+            const err = e instanceof Error ? e : new Error('Turnstile execute failed');
+            pendingResolversRef.current = pendingResolversRef.current.filter(
+              (p) => p.reject !== reject
+            );
+            reject(err);
+          }
+        })
+    );
+
+    // Update queue head; .catch so a single rejection doesn't break the chain.
+    tokenQueueRef.current = myTurn.catch(() => {});
+
+    return await myTurn;
   }, []);
 
   useImperativeHandle(ref, () => ({ getToken }), [getToken]);
