@@ -12,11 +12,13 @@
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 import type { W1HKey } from '@/lib/constants';
+import { verifyTurnstileToken } from '@/lib/turnstile-server';
 
 const GrammarImprovementInputSchema = z.object({
   elementType: z.enum(['who', 'what', 'when', 'where', 'why', 'how']).describe('The type of 5W1H element (e.g., "who", "what").'),
   text: z.string().describe('The current text of the element to be improved.'),
   elementLabel: z.string().describe('The display label of the element (e.g., "誰 (Who)").'),
+  turnstileToken: z.string().optional().describe('Cloudflare Turnstile token for bot protection.'),
 });
 export type GrammarImprovementInput = z.infer<typeof GrammarImprovementInputSchema>;
 
@@ -26,6 +28,7 @@ const GrammarImprovementOutputSchema = z.object({
 export type GrammarImprovementOutput = z.infer<typeof GrammarImprovementOutputSchema>;
 
 export async function grammarImprovement(input: GrammarImprovementInput): Promise<GrammarImprovementOutput> {
+  await verifyTurnstileToken(input.turnstileToken);
   return grammarImprovementFlow(input);
 }
 

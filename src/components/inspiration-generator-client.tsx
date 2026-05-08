@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/dialog";
 import confetti from 'canvas-confetti';
 import { cn } from '@/lib/utils';
+import TurnstileWidget, { type TurnstileWidgetHandle } from '@/components/turnstile-widget';
 
 type W1HState = {
   [key in W1HKey]: {
@@ -143,6 +144,16 @@ export default function InspirationGeneratorClient() {
   const consistencyAlertKey = useRef(0);
   const storyCardKey = useRef(0);
   const synthesizedStoryCardRef = useRef<HTMLDivElement>(null);
+  const turnstileRef = useRef<TurnstileWidgetHandle>(null);
+
+  const getTurnstileToken = useCallback(async (): Promise<string | undefined> => {
+    try {
+      return await turnstileRef.current?.getToken();
+    } catch (e) {
+      console.warn('Turnstile token fetch failed, proceeding without:', e);
+      return undefined;
+    }
+  }, []);
 
 
   const handleTextChange = (key: W1HKey, text: string) => {
@@ -164,14 +175,16 @@ export default function InspirationGeneratorClient() {
       ];
       const uniqueAvoidOptions = Array.from(new Set(allAvoidOptions));
 
+      const turnstileToken = await getTurnstileToken();
       const input: RandomElementGenerationInput = {
         elementType: key,
         elementLabel: W1H_ELEMENTS[key].label,
         existingOptions: uniqueAvoidOptions,
+        turnstileToken,
       };
       const result = await randomElementGenerate(input);
       setW1hData((prev) => ({ ...prev, [key]: { ...prev[key], text: result.generatedText } }));
-      
+
       setRecentSessionSuggestions(prev => {
         const updatedSuggestions = [...(prev[key] || [])];
         if (result.generatedText && !updatedSuggestions.includes(result.generatedText)) {
@@ -191,7 +204,7 @@ export default function InspirationGeneratorClient() {
     } finally {
       setIsLoading(prev => ({ ...prev, elements: { ...prev.elements, [key]: false } }));
     }
-  }, [w1hData, toast, recentSessionSuggestions]);
+  }, [w1hData, toast, recentSessionSuggestions, getTurnstileToken]);
 
   const handleRandomAll = async () => {
     setIsLoading(prev => ({ ...prev, randomAll: true }));
@@ -223,10 +236,12 @@ export default function InspirationGeneratorClient() {
         ];
         const uniqueAvoidOptions = Array.from(new Set(allAvoidOptions));
 
+        const turnstileToken = await getTurnstileToken();
         const input: RandomElementGenerationInput = {
           elementType: key,
           elementLabel: W1H_ELEMENTS[key].label,
-          existingOptions: uniqueAvoidOptions, 
+          existingOptions: uniqueAvoidOptions,
+          turnstileToken,
         };
         const result = await randomElementGenerate(input);
         setW1hData((prevData) => ({
@@ -307,10 +322,12 @@ export default function InspirationGeneratorClient() {
         continue;
       }
       try {
+        const turnstileToken = await getTurnstileToken();
         const input: GrammarImprovementInput = {
           elementType: key,
           text: originalText,
           elementLabel: W1H_ELEMENTS[key].label,
+          turnstileToken,
         };
         const result = await grammarImprovement(input);
         newW1hData[key] = { ...newW1hData[key], text: result.refinedText };
@@ -376,6 +393,7 @@ export default function InspirationGeneratorClient() {
     setIsLoading(prev => ({ ...prev, consistency: true }));
     setConsistencyResult(null);
     setSynthesizedContent(null);
+    const turnstileToken = await getTurnstileToken();
     const currentTexts: ConsistencyCheckInput = {
       who: w1hData.who.text,
       what: w1hData.what.text,
@@ -383,6 +401,7 @@ export default function InspirationGeneratorClient() {
       where: w1hData.where.text,
       why: w1hData.why.text,
       how: w1hData.how.text,
+      turnstileToken,
     };
 
     try {
@@ -425,6 +444,7 @@ export default function InspirationGeneratorClient() {
     setIsLoading(prev => ({ ...prev, synthesis: true }));
     setSynthesizedContent(null);
     setConsistencyResult(null);
+    const turnstileToken = await getTurnstileToken();
     const currentTexts: StorySynthesisInput = {
       who: w1hData.who.text,
       what: w1hData.what.text,
@@ -432,6 +452,7 @@ export default function InspirationGeneratorClient() {
       where: w1hData.where.text,
       why: w1hData.why.text,
       how: w1hData.how.text,
+      turnstileToken,
     };
 
     const errorTitles = ['生成標題失敗', '內容生成受阻', '合成發生錯誤'];
@@ -530,10 +551,12 @@ export default function InspirationGeneratorClient() {
           ];
           const uniqueAvoidOptions = Array.from(new Set(allAvoidOptions));
 
+          const turnstileToken = await getTurnstileToken();
           const result = await randomElementGenerate({
             elementType: key as W1HKey,
             elementLabel: W1H_ELEMENTS[key as W1HKey].label,
             existingOptions: uniqueAvoidOptions,
+            turnstileToken,
           });
           
           setW1hData(prevData => ({
@@ -604,6 +627,7 @@ export default function InspirationGeneratorClient() {
 
   return (
     <div className="container mx-auto px-4 py-8">
+      <TurnstileWidget ref={turnstileRef} />
       <p className="text-center text-lg text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-950/70 p-6 rounded-xl shadow-lg mb-8 max-w-prose mx-auto border border-blue-200 dark:border-blue-800">
         點擊「隨機產生」來獲得靈感，或使用工具「潤飾語法」、「檢查一致性」及「合成內容」來完善您的創意點子！
       </p>

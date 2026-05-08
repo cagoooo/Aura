@@ -12,11 +12,13 @@ import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 import type { W1HKey } from '@/lib/constants';
 import { W1H_ELEMENTS } from '@/lib/constants';
+import { verifyTurnstileToken, TurnstileError } from '@/lib/turnstile-server';
 
 const RandomElementGenerationInputSchema = z.object({
   elementType: z.enum(['who', 'what', 'when', 'where', 'why', 'how']).describe('The type of 5W1H element to generate (e.g., "who", "what").'),
   elementLabel: z.string().describe('The display label of the element (e.g., "誰 (Who)").'),
   existingOptions: z.array(z.string()).describe('A list of default examples AND RECENTLY GENERATED IDEAS for this element. The AI must generate something significantly different from ALL of these. The goal is true novelty each time, avoiding repetition of any themes, styles, or specific phrases from this list, or common tropes in general.'),
+  turnstileToken: z.string().optional().describe('Cloudflare Turnstile token for bot protection. Verified server-side; ignored if TURNSTILE_SECRET_KEY is not configured.'),
 });
 export type RandomElementGenerationInput = z.infer<typeof RandomElementGenerationInputSchema>;
 
@@ -26,6 +28,7 @@ const RandomElementGenerationOutputSchema = z.object({
 export type RandomElementGenerationOutput = z.infer<typeof RandomElementGenerationOutputSchema>;
 
 export async function randomElementGenerate(input: RandomElementGenerationInput): Promise<RandomElementGenerationOutput> {
+  await verifyTurnstileToken(input.turnstileToken);
   return randomElementGenerationFlow(input);
 }
 

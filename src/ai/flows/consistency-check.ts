@@ -12,6 +12,7 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+import { verifyTurnstileToken } from '@/lib/turnstile-server';
 
 const ConsistencyCheckInputSchema = z.object({
   who: z.string().describe('Who is involved in the story.'),
@@ -20,6 +21,7 @@ const ConsistencyCheckInputSchema = z.object({
   where: z.string().describe('Where the story took place.'),
   why: z.string().describe('Why the story happened.'),
   how: z.string().describe('How the story happened.'),
+  turnstileToken: z.string().optional().describe('Cloudflare Turnstile token for bot protection.'),
 });
 
 export type ConsistencyCheckInput = z.infer<typeof ConsistencyCheckInputSchema>;
@@ -32,6 +34,7 @@ const ConsistencyCheckOutputSchema = z.object({
 export type ConsistencyCheckOutput = z.infer<typeof ConsistencyCheckOutputSchema>;
 
 export async function consistencyCheck(input: ConsistencyCheckInput): Promise<ConsistencyCheckOutput> {
+  await verifyTurnstileToken(input.turnstileToken);
   return consistencyCheckFlow(input);
 }
 

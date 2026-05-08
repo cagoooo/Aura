@@ -10,6 +10,7 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+import { verifyTurnstileToken } from '@/lib/turnstile-server';
 
 const StorySynthesisInputSchema = z.object({
   who: z.string().describe('Who is involved in the story.'),
@@ -18,6 +19,7 @@ const StorySynthesisInputSchema = z.object({
   where: z.string().describe('Where the story took place.'),
   why: z.string().describe('Why the story happened.'),
   how: z.string().describe('How the story happened.'),
+  turnstileToken: z.string().optional().describe('Cloudflare Turnstile token for bot protection.'),
 });
 
 export type StorySynthesisInput = z.infer<typeof StorySynthesisInputSchema>;
@@ -30,6 +32,7 @@ const StorySynthesisOutputSchema = z.object({
 export type StorySynthesisOutput = z.infer<typeof StorySynthesisOutputSchema>;
 
 export async function storySynthesis(input: StorySynthesisInput): Promise<StorySynthesisOutput> {
+  await verifyTurnstileToken(input.turnstileToken);
   return storySynthesisFlow(input);
 }
 
