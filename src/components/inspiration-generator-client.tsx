@@ -8,10 +8,12 @@ import W1HElementCard from '@/components/w1h-element-card';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { consistencyCheck, ConsistencyCheckInput, ConsistencyCheckOutput } from '@/ai/flows/consistency-check';
-import { grammarImprovement, GrammarImprovementInput, GrammarImprovementOutput } from '@/ai/flows/grammar-improvement';
-import { storySynthesis, StorySynthesisInput, StorySynthesisOutput } from '@/ai/flows/story-synthesis';
-import { randomElementGenerate, RandomElementGenerationInput, RandomElementGenerationOutput } from '@/ai/flows/random-element-generation';
+import {
+  consistencyCheck, type ConsistencyCheckInput, type ConsistencyCheckOutput,
+  grammarImprovement, type GrammarImprovementInput, type GrammarImprovementOutput,
+  storySynthesis, type StorySynthesisInput, type StorySynthesisOutput,
+  randomElementGenerate, type RandomElementGenerationInput, type RandomElementGenerationOutput,
+} from '@/lib/api';
 import { Loader2, CheckCircle2, Shuffle, BookText, Copy, FileText, Check, ThumbsUp, Wand2 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
@@ -24,7 +26,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import confetti from 'canvas-confetti';
-import { cn } from '@/lib/utils';
+import { cn, assetPath } from '@/lib/utils';
 import TurnstileWidget, { type TurnstileWidgetHandle } from '@/components/turnstile-widget';
 
 type W1HState = {
@@ -368,7 +370,7 @@ export default function InspirationGeneratorClient() {
     if (actualModificationsCount > 0) {
       setGrammarButtonFeedbackIcon('check');
       try {
-        new Audio('/sounds/confetti-short.mp3').play().catch(e => console.warn("Could not play short confetti sound:", e));
+        new Audio(assetPath('/sounds/confetti-short.mp3')).play().catch(e => console.warn("Could not play short confetti sound:", e));
       } catch(e) {
         console.warn("Error triggering sound for grammar refinement:", e);
       }
@@ -419,7 +421,7 @@ export default function InspirationGeneratorClient() {
             startVelocity: 30,
             colors: ['#2196F3', '#FF9800', '#FFFFFF', '#4CAF50', '#FFC107'],
           });
-          new Audio('/sounds/confetti-short.mp3').play().catch(e => console.warn("Could not play short confetti sound:", e));
+          new Audio(assetPath('/sounds/confetti-short.mp3')).play().catch(e => console.warn("Could not play short confetti sound:", e));
         } catch (e) {
           console.warn("Audio context error for confetti sound:", e);
         }
@@ -476,7 +478,7 @@ export default function InspirationGeneratorClient() {
             ticks: 300,
             colors: ['#FFC700', '#FF6B6B', '#4ECDC4', '#45B7D1', '#F7B801', '#5F95FE', '#FAD02C'],
           });
-          new Audio('/sounds/confetti-grand.mp3').play().catch(e => console.warn("Could not play grand confetti sound:", e));
+          new Audio(assetPath('/sounds/confetti-grand.mp3')).play().catch(e => console.warn("Could not play grand confetti sound:", e));
         } catch (e) {
             console.warn("Audio context error for grand confetti sound:", e);
         }

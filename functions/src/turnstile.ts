@@ -1,23 +1,9 @@
 /**
- * Cloudflare Turnstile server-side token verification.
- *
- * Set TURNSTILE_SECRET_KEY in your env (Vercel / Firebase Functions / .env.local) to enable.
- * If not set, verification is skipped (development / pre-launch state).
- *
- * Docs: https://developers.cloudflare.com/turnstile/get-started/server-side-validation/
+ * Cloudflare Turnstile server-side verification (Cloud Functions edition).
+ * No-op if TURNSTILE_SECRET_KEY isn't injected (dev / pre-launch).
  */
-
 const TURNSTILE_VERIFY_URL =
   'https://challenges.cloudflare.com/turnstile/v0/siteverify';
-
-interface TurnstileVerifyResponse {
-  success: boolean;
-  'error-codes'?: string[];
-  challenge_ts?: string;
-  hostname?: string;
-  action?: string;
-  cdata?: string;
-}
 
 export class TurnstileError extends Error {
   constructor(message: string, public codes: string[] = []) {
@@ -26,16 +12,10 @@ export class TurnstileError extends Error {
   }
 }
 
-/**
- * Verify a Turnstile token. Throws TurnstileError on failure.
- * No-op if TURNSTILE_SECRET_KEY is not configured.
- */
 export async function verifyTurnstileToken(
   token: string | undefined
 ): Promise<void> {
   const secret = process.env.TURNSTILE_SECRET_KEY;
-
-  // Feature-flag: if no secret configured, skip verification (dev / pre-launch).
   if (!secret) return;
 
   if (!token || token.trim() === '') {
@@ -43,7 +23,6 @@ export async function verifyTurnstileToken(
   }
 
   const body = new URLSearchParams({ secret, response: token });
-
   let res: Response;
   try {
     res = await fetch(TURNSTILE_VERIFY_URL, { method: 'POST', body });
@@ -51,12 +30,9 @@ export async function verifyTurnstileToken(
     console.error('Turnstile verify network error:', e);
     throw new TurnstileError('連線 Cloudflare 驗證服務失敗，請稍後再試。');
   }
+  if (!res.ok) throw new TurnstileError(`Turnstile verify HTTP ${res.status}`);
 
-  if (!res.ok) {
-    throw new TurnstileError(`Turnstile verify HTTP ${res.status}`);
-  }
-
-  const data = (await res.json()) as TurnstileVerifyResponse;
+  const data = (await res.json()) as { success: boolean; 'error-codes'?: string[] };
   if (!data.success) {
     const codes = data['error-codes'] ?? [];
     console.warn('Turnstile verification failed:', codes);

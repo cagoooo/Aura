@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Lock, Unlock, Shuffle, Loader2 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { cn } from '@/lib/utils';
+import { cn, assetPath } from '@/lib/utils';
 import confetti from 'canvas-confetti';
 
 interface W1HElementCardProps {
@@ -64,7 +64,7 @@ export default function W1HElementCard({
           colors: ['#FFC700', '#FF8A00', '#4285F4', '#34A853', '#EA4335']
         });
         try {
-          new Audio('/sounds/confetti-short.mp3').play().catch(e => console.warn("Could not play confetti sound:", e));
+          new Audio(assetPath('/sounds/confetti-short.mp3')).play().catch(e => console.warn("Could not play confetti sound:", e));
         } catch (e) {
           console.warn("Audio context error for confetti sound:", e);
         }

@@ -1,42 +1,21 @@
+import { z } from 'genkit';
+import { getAi } from '../genkit';
+import { W1H_ELEMENTS, type W1HKey } from '../constants';
 
-'use server';
-/**
- * @fileOverview A Genkit flow for generating a random, creative suggestion for a single 5W1H element.
- *
- * - randomElementGenerate - A function that generates a random idea for a given 5W1H element type.
- * - RandomElementGenerationInput - The input type for the randomElementGenerate function.
- * - RandomElementGenerationOutput - The return type for the randomElementGenerate function.
- */
-
-import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
-import type { W1HKey } from '@/lib/constants';
-import { W1H_ELEMENTS } from '@/lib/constants';
-import { verifyTurnstileToken, TurnstileError } from '@/lib/turnstile-server';
-
-const RandomElementGenerationInputSchema = z.object({
-  elementType: z.enum(['who', 'what', 'when', 'where', 'why', 'how']).describe('The type of 5W1H element to generate (e.g., "who", "what").'),
-  elementLabel: z.string().describe('The display label of the element (e.g., "誰 (Who)").'),
-  existingOptions: z.array(z.string()).describe('A list of default examples AND RECENTLY GENERATED IDEAS for this element. The AI must generate something significantly different from ALL of these. The goal is true novelty each time, avoiding repetition of any themes, styles, or specific phrases from this list, or common tropes in general.'),
-  turnstileToken: z.string().optional().describe('Cloudflare Turnstile token for bot protection. Verified server-side; ignored if TURNSTILE_SECRET_KEY is not configured.'),
+export const RandomElementGenerationInputSchema = z.object({
+  elementType: z.enum(['who', 'what', 'when', 'where', 'why', 'how']),
+  elementLabel: z.string(),
+  existingOptions: z.array(z.string()),
+  turnstileToken: z.string().optional(),
 });
 export type RandomElementGenerationInput = z.infer<typeof RandomElementGenerationInputSchema>;
 
-const RandomElementGenerationOutputSchema = z.object({
-  generatedText: z.string().describe('The AI-generated creative suggestion for the element, in natural and fluent Traditional Chinese commonly used in Taiwan. This suggestion must be completely new, fresh, and distinct from any previous examples or common themes, and avoid Mainland Chinese specific terminology.'),
+export const RandomElementGenerationOutputSchema = z.object({
+  generatedText: z.string(),
 });
 export type RandomElementGenerationOutput = z.infer<typeof RandomElementGenerationOutputSchema>;
 
-export async function randomElementGenerate(input: RandomElementGenerationInput): Promise<RandomElementGenerationOutput> {
-  await verifyTurnstileToken(input.turnstileToken);
-  return randomElementGenerationFlow(input);
-}
-
-const randomElementGenerationPrompt = ai.definePrompt({
-  name: 'randomElementGenerationPrompt',
-  input: {schema: RandomElementGenerationInputSchema},
-  output: {schema: RandomElementGenerationOutputSchema},
-  prompt: `You are a highly creative AI assistant specializing in generating **truly unique, unexpected, and widely diverse** story components using natural and fluent Traditional Chinese that is common in Taiwan. Avoid Mainland Chinese specific terminology.
+const PROMPT = `You are a highly creative AI assistant specializing in generating **truly unique, unexpected, and widely diverse** story components using natural and fluent Traditional Chinese that is common in Taiwan. Avoid Mainland Chinese specific terminology.
 Your task is to provide a **CONCISE yet IMPACTFUL, COMPLETELY NEW, FRESH, VIVID, and IMAGINATIVE** phrase or short sentence for the story element: {{{elementLabel}}} (type: {{{elementType}}}). Aim for brevity without sacrificing creativity or clarity.
 
 **CRITICALLY IMPORTANT: All generated text MUST be suitable for a GENERAL audience and EXTREMELY UNLIKELY to be flagged by automated content moderation systems on common public platforms (e.g., blogs, social media). This means avoiding not only overtly harmful content but also nuanced themes, specific word choices, or scenarios that, while creatively intended, might be misinterpreted by strict algorithms as depicting controversial topics, dangerous activities, or violations of acceptable use policies. Prioritize universal appropriateness, clarity, and positive or neutral themes. If an idea seems even slightly risky for broad platform acceptance, CHOOSE A SAFER ALTERNATIVE. Focus on creativity that is universally appropriate and respectful.**
@@ -75,42 +54,39 @@ Or for '何事 (What)':
 {
   "generatedText": "發現了一本只在雨天才能閱讀的日記"
 }
-`,
-  config: {
-    temperature: 1.0, // Encourage more diverse, less predictable output
-    safetySettings: [
-      { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_LOW_AND_ABOVE' },
-      { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_LOW_AND_ABOVE' },
-      { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_LOW_AND_ABOVE' },
-      { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_LOW_AND_ABOVE' },
-    ],
-  },
-});
+`;
 
-const randomElementGenerationFlow = ai.defineFlow(
-  {
-    name: 'randomElementGenerationFlow',
-    inputSchema: RandomElementGenerationInputSchema,
-    outputSchema: RandomElementGenerationOutputSchema,
-  },
-  async (input: RandomElementGenerationInput) => {
-    try {
-      const {output} = await randomElementGenerationPrompt(input);
-      if (!output || !output.generatedText || output.generatedText.trim() === "") {
-        // Fallback if AI returns empty or no text, or if it's blocked/problematic and returns nothing meaningful
-        console.warn(`AI returned no text for ${input.elementType}, using fallback.`);
-        const fallbackOptions = W1H_ELEMENTS[input.elementType as W1HKey]?.options || ['一個安全的點子'];
-        const randomFallback = fallbackOptions[Math.floor(Math.random() * fallbackOptions.length)];
-        return { generatedText: randomFallback };
-      }
-      return output;
-    } catch (e: any) {
-      console.error(`Error during random element generation for ${input.elementType}:`, e);
-      // Fallback if AI call fails or is blocked by safety settings
-      const fallbackOptions = W1H_ELEMENTS[input.elementType as W1HKey]?.options || ['一個備用的好主意'];
-      const randomFallback = fallbackOptions[Math.floor(Math.random() * fallbackOptions.length)];
-      return { generatedText: randomFallback };
+export async function runRandomElementGeneration(
+  input: RandomElementGenerationInput
+): Promise<RandomElementGenerationOutput> {
+  const ai = getAi();
+  const prompt = ai.definePrompt({
+    name: 'randomElementGenerationPrompt',
+    input: { schema: RandomElementGenerationInputSchema },
+    output: { schema: RandomElementGenerationOutputSchema },
+    prompt: PROMPT,
+    config: {
+      temperature: 1.0,
+      safetySettings: [
+        { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_LOW_AND_ABOVE' },
+        { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_LOW_AND_ABOVE' },
+        { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_LOW_AND_ABOVE' },
+        { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_LOW_AND_ABOVE' },
+      ],
+    },
+  });
+
+  try {
+    const { output } = await prompt(input);
+    if (!output || !output.generatedText || output.generatedText.trim() === '') {
+      console.warn(`AI returned no text for ${input.elementType}, using fallback.`);
+      const fb = W1H_ELEMENTS[input.elementType as W1HKey]?.options || ['一個安全的點子'];
+      return { generatedText: fb[Math.floor(Math.random() * fb.length)] };
     }
+    return output;
+  } catch (e) {
+    console.error(`Error during random element generation for ${input.elementType}:`, e);
+    const fb = W1H_ELEMENTS[input.elementType as W1HKey]?.options || ['一個備用的好主意'];
+    return { generatedText: fb[Math.floor(Math.random() * fb.length)] };
   }
-);
-
+}
