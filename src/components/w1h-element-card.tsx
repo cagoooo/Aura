@@ -6,6 +6,7 @@ import type { W1HElement } from '@/lib/constants';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Lock, Unlock, Shuffle, Loader2 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn, assetPath } from '@/lib/utils';
@@ -104,14 +105,23 @@ export default function W1HElementCard({
         </TooltipProvider>
       </CardHeader>
       <CardContent className="flex flex-col flex-grow gap-4">
-        <Textarea
-          value={value}
-          onChange={(e) => onValueChange(e.target.value)}
-          placeholder={element.placeholder}
-          className="flex-grow min-h-[100px] text-base rounded-md shadow-inner bg-background/50 dark:bg-card"
-          disabled={isTextareaDisabled}
-          aria-label={element.label}
-        />
+        {isLoading ? (
+          // Skeleton lines mimic 2-3 rows of text — feels like AI is "drafting"
+          <div className="flex-grow min-h-[100px] flex flex-col justify-center gap-2.5 px-3" aria-label="AI 正在產生內容…" role="status">
+            <Skeleton className="h-3.5 w-[88%] bg-primary/15" />
+            <Skeleton className="h-3.5 w-[72%] bg-primary/15" />
+            <Skeleton className="h-3.5 w-[55%] bg-primary/15" />
+          </div>
+        ) : (
+          <Textarea
+            value={value}
+            onChange={(e) => onValueChange(e.target.value)}
+            placeholder={element.placeholder}
+            className="flex-grow min-h-[100px] text-base rounded-md shadow-inner bg-background/50 dark:bg-card animate-in fade-in-0 duration-300"
+            disabled={isTextareaDisabled}
+            aria-label={element.label}
+          />
+        )}
         <Button
           onClick={onRandom}
           disabled={isRandomButtonDisabled}

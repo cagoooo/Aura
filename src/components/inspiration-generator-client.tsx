@@ -177,6 +177,33 @@ export default function InspirationGeneratorClient() {
     }
   }, []);
 
+  // #17 — Cold-start hint. Cloud Functions cold-start can take 2-5 sec on
+  // a fresh / scaled-to-zero instance. Show a one-time friendly toast so
+  // users don't think the page is broken while waiting for the first call.
+  const coldStartShownRef = useRef(false);
+  const coldStartTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const armColdStartHint = useCallback(() => {
+    if (coldStartShownRef.current) return;
+    if (coldStartTimerRef.current) clearTimeout(coldStartTimerRef.current);
+    coldStartTimerRef.current = setTimeout(() => {
+      if (coldStartShownRef.current) return;
+      coldStartShownRef.current = true;
+      toast({
+        title: "🛌 AI 正在喚醒…",
+        description: "第一次呼叫 Cloud Functions 比較慢（~3 秒），後續會很快！",
+        duration: 4000,
+      });
+    }, 1500);
+  }, [toast]);
+  const disarmColdStartHint = useCallback(() => {
+    if (coldStartTimerRef.current) {
+      clearTimeout(coldStartTimerRef.current);
+      coldStartTimerRef.current = null;
+    }
+    // Mark shown so we don't fire it later in the session
+    coldStartShownRef.current = true;
+  }, []);
+
 
   const handleTextChange = (key: W1HKey, text: string) => {
     setW1hData((prev) => ({ ...prev, [key]: { ...prev[key], text } }));
@@ -264,43 +291,44 @@ export default function InspirationGeneratorClient() {
     }));
 
     let generatedCount = 0;
+    armColdStartHint();
     try {
       const turnstileToken = await getTurnstileToken();
       setRandomAllProgress(40);
 
       const { results } = await randomElementBulk({ items, turnstileToken });
+      disarmColdStartHint();
       setRandomAllProgress(95);
 
-      setW1hData(prev => {
-        const next = { ...prev };
-        elementsToProcessKeys.forEach((key, i) => {
+      // Stagger the per-card text update + skeleton dismissal
+      const STAGGER_MS = 120;
+      elementsToProcessKeys.forEach((key, i) => {
+        setTimeout(() => {
           const text = results[i]?.generatedText?.trim();
           if (text) {
-            next[key] = { ...next[key], text };
+            setW1hData(prev => ({ ...prev, [key]: { ...prev[key], text } }));
+            setRecentSessionSuggestions(prev => {
+              const updated = [...(prev[key] || [])];
+              if (!updated.includes(text)) updated.unshift(text);
+              return { ...prev, [key]: updated.slice(0, 5) };
+            });
             generatedCount++;
           }
-        });
-        return next;
+          setIsLoading(prev => ({ ...prev, elements: { ...prev.elements, [key]: false } }));
+        }, i * STAGGER_MS);
       });
 
-      setRecentSessionSuggestions(prev => {
-        const next = { ...prev };
-        elementsToProcessKeys.forEach((key, i) => {
-          const text = results[i]?.generatedText?.trim();
-          if (!text) return;
-          const updated = [...(next[key] || [])];
-          if (!updated.includes(text)) updated.unshift(text);
-          next[key] = updated.slice(0, 5);
-        });
-        return next;
-      });
-
-      setRandomAllProgress(100);
-      if (generatedCount > 0) {
-        toast({ variant: "success", title: "全部隨機完畢", description: `已為 ${generatedCount} 個未鎖定項目產生新內容。` });
-      }
+      // Final state cleanup + toast after stagger completes
+      setTimeout(() => {
+        setIsLoading(prev => ({ ...prev, randomAll: false }));
+        setRandomAllProgress(100);
+        if (generatedCount > 0) {
+          toast({ variant: "success", title: "全部隨機完畢", description: `已為 ${generatedCount} 個未鎖定項目產生新內容。` });
+        }
+      }, elementsToProcessKeys.length * STAGGER_MS);
     } catch (error) {
       console.error('Bulk random failed, falling back to default options:', error);
+      disarmColdStartHint();
       setW1hData(prev => {
         const next = { ...prev };
         elementsToProcessKeys.forEach((key) => {
@@ -309,7 +337,6 @@ export default function InspirationGeneratorClient() {
         return next;
       });
       toast({ variant: "destructive", title: "全部隨機失敗", description: "AI 服務暫時不可用，已使用預設備用內容。" });
-    } finally {
       setIsLoading(prev => ({
         ...prev,
         randomAll: false,
@@ -340,6 +367,7 @@ export default function InspirationGeneratorClient() {
     setGrammarProgress(15);
 
     // Bulk: 1 Turnstile token + parallel server-side Gemini calls.
+    armColdStartHint();
     try {
       const turnstileToken = await getTurnstileToken();
       setGrammarProgress(40);
@@ -349,6 +377,7 @@ export default function InspirationGeneratorClient() {
         elementLabel: W1H_ELEMENTS[key].label,
       }));
       const { results } = await grammarImproveBulk({ items, turnstileToken });
+      disarmColdStartHint();
       setGrammarProgress(95);
       elementsToRefine.forEach((key, i) => {
         const refined = results[i]?.refinedText;
@@ -426,8 +455,10 @@ export default function InspirationGeneratorClient() {
       turnstileToken,
     };
 
+    armColdStartHint();
     try {
       const result = await consistencyCheck(currentTexts);
+      disarmColdStartHint();
       setConsistencyResult(result);
       consistencyAlertKey.current += 1; 
       if (result.isConsistent || (!result.isConsistent && result.suggestions.length > 0)) {
@@ -479,8 +510,10 @@ export default function InspirationGeneratorClient() {
 
     const errorTitles = ['生成標題失敗', '內容生成受阻', '合成發生錯誤'];
 
+    armColdStartHint();
     try {
       const result = await storySynthesis(currentTexts);
+      disarmColdStartHint();
       setSynthesizedContent(result);
       storyCardKey.current += 1; 
 
@@ -836,37 +869,41 @@ export default function InspirationGeneratorClient() {
         ),
       }));
 
+      armColdStartHint();
       try {
         const turnstileToken = await getTurnstileToken();
         const { results } = await randomElementBulk({ items, turnstileToken });
+        disarmColdStartHint();
 
-        setW1hData(prev => {
-          const next = { ...prev };
-          ALL_W1H_KEYS.forEach((key, i) => {
+        // #16 Stagger: reveal each card one at a time with a 120ms cascade
+        // so the user sees a graceful "AI is drafting" effect instead of
+        // 6 cards snapping at once. Each card's skeleton clears as its
+        // text lands.
+        const STAGGER_MS = 120;
+        ALL_W1H_KEYS.forEach((key, i) => {
+          setTimeout(() => {
             const generated = results[i]?.generatedText?.trim();
-            if (generated) next[key] = { ...next[key], text: generated };
-          });
-          return next;
+            if (generated) {
+              setW1hData(prev => ({ ...prev, [key]: { ...prev[key], text: generated } }));
+              setRecentSessionSuggestions(prev => {
+                const updated = [...(prev[key] || [])];
+                if (!updated.includes(generated)) updated.unshift(generated);
+                return { ...prev, [key]: updated.slice(0, 5) };
+              });
+            }
+            setIsLoading(prev => ({ ...prev, elements: { ...prev.elements, [key]: false } }));
+          }, i * STAGGER_MS);
         });
 
-        setRecentSessionSuggestions(prev => {
-          const next = { ...prev };
-          ALL_W1H_KEYS.forEach((key, i) => {
-            const generated = results[i]?.generatedText?.trim();
-            if (!generated) return;
-            const updated = [...(next[key] || [])];
-            if (!updated.includes(generated)) updated.unshift(generated);
-            next[key] = updated.slice(0, 5);
-          });
-          return next;
-        });
-
-        toast({ variant: "success", title: "AI 靈感已填入！", description: "已為您產生 6 個全新 5W1H 點子。" });
+        // Toast fires after the last card lands so it feels intentional
+        setTimeout(() => {
+          toast({ variant: "success", title: "AI 靈感已填入！", description: "已為您產生 6 個全新 5W1H 點子。" });
+        }, ALL_W1H_KEYS.length * STAGGER_MS);
       } catch (error) {
         console.error('Initial bulk generation failed; keeping optimistic placeholders:', error);
-        // Cards already have constants-based text from useState init, so we
-        // silently degrade — no need for a destructive toast.
-      } finally {
+        // On error: clear all loading states immediately (no stagger to wait
+        // for). Cards already have constants-based text from useState init.
+        disarmColdStartHint();
         setIsLoading(prev => ({
           ...prev,
           elements: ALL_W1H_KEYS.reduce(
@@ -875,6 +912,8 @@ export default function InspirationGeneratorClient() {
           ),
         }));
       }
+      // Note: success path does NOT clear isLoading here — the stagger
+      // setTimeouts above handle per-card loading=false themselves.
     };
 
     populateInitialElements();

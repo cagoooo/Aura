@@ -1,0 +1,5 @@
+{
+  "buildId": "local-test",
+  "buildTime": "2026-05-08T13:22:39.344Z",
+  "note": "Polled every few minutes by the running app. If buildId changes, prompt user to refresh."
+}
