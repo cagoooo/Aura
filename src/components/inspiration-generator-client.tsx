@@ -18,6 +18,7 @@ import {
   saveStory,
 } from '@/lib/api';
 import ImageUploadDialog from '@/components/image-upload-dialog';
+import ShareLinkDialog from '@/components/share-link-dialog';
 import { useSpeechRecognition } from '@/hooks/use-speech-recognition';
 import { useAppSettings } from '@/hooks/use-app-settings';
 import { Loader2, CheckCircle2, Shuffle, BookText, Copy, FileText, Check, ThumbsUp, Wand2, Printer, ChevronDown, Camera, Presentation, Share2, Link2 } from 'lucide-react';
@@ -154,6 +155,7 @@ export default function InspirationGeneratorClient() {
   });
 
   const [imageDialogOpen, setImageDialogOpen] = useState(false);
+  const [shareDialogUrl, setShareDialogUrl] = useState<string | null>(null);
 
   const [randomAllProgress, setRandomAllProgress] = useState(0);
   const [grammarProgress, setGrammarProgress] = useState(0);
@@ -664,8 +666,10 @@ export default function InspirationGeneratorClient() {
         turnstileToken,
       });
       const url = `${window.location.origin}${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}/#/s/${id}`;
-      await navigator.clipboard.writeText(url);
-      toast({ variant: "success", title: "分享連結已複製", description: url });
+      // Open the share dialog. It silently attempts clipboard write itself,
+      // and the explicit Copy button there always works because the click
+      // restores document focus (Turnstile iframe sometimes steals it).
+      setShareDialogUrl(url);
     } catch (e: any) {
       console.error('saveStory failed:', e);
       toast({ variant: "destructive", title: "分享失敗", description: e?.message ?? "請稍後再試。" });
@@ -1004,6 +1008,11 @@ export default function InspirationGeneratorClient() {
         onOpenChange={setImageDialogOpen}
         onAnalyze={handleAnalyzeImage}
         isAnalyzing={isLoading.analyze}
+      />
+      <ShareLinkDialog
+        open={shareDialogUrl !== null}
+        url={shareDialogUrl}
+        onClose={() => setShareDialogUrl(null)}
       />
       <p className="text-center text-lg text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-950/70 p-6 rounded-xl shadow-lg mb-8 max-w-prose mx-auto border border-blue-200 dark:border-blue-800">
         點擊「隨機產生」來獲得靈感，或使用工具「潤飾語法」、「檢查一致性」及「合成內容」來完善您的創意點子！
