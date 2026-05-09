@@ -53,16 +53,20 @@ export default function AppHeader() {
           </span>
         </Link>
         <div className="absolute right-2 sm:right-4 flex items-center gap-1">
-          {/* Hash-route link. Next.js Link auto-prepends basePath; passing
-              the path WITHOUT /Aura avoids the double-prefix bug. */}
-          <Link
-            href="/#/discover"
+          {/* Plain <a> for hash routes — Next.js Link doesn't fire
+              `hashchange` when only the fragment changes (it thinks the
+              pathname is unchanged so the router does nothing). Native
+              <a href="#..."> hands off to the browser, which sets
+              window.location.hash and fires the event our page.tsx
+              detector listens for. */}
+          <a
+            href="#/discover"
             aria-label="瀏覽公開故事 Hall of Fame"
             className="inline-flex items-center justify-center h-9 w-9 sm:w-auto sm:px-3 rounded-md hover:bg-accent/30 text-muted-foreground hover:text-primary transition-colors"
           >
             <Globe className="h-5 w-5 sm:mr-1" />
             <span className="hidden sm:inline text-sm font-medium">瀏覽</span>
-          </Link>
+          </a>
           {hydrated && (
             <SettingsPopover
               style={settings.style}

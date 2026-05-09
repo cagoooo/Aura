@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
-import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Loader2, Globe, Home, Sparkles, ArrowRight } from 'lucide-react';
@@ -89,14 +88,15 @@ export default function DiscoverView({ basePath }: Props) {
               ? new Date(s.createdAt.toDate()).toLocaleDateString('zh-TW', { year: 'numeric', month: 'numeric', day: 'numeric' })
               : '';
             const preview = s.story.slice(0, 100) + (s.story.length > 100 ? '…' : '');
-            // Next.js Link auto-prepends basePath; pass the bare hash path.
-            const href = `/#/s/${s.id}`;
+            // Plain <a href="#..."> for hash routing (Next.js Link
+            // doesn't fire hashchange on fragment-only navigation).
+            const href = `#/s/${s.id}`;
             return (
               <Card
                 key={s.id}
                 className="group hover:border-primary/40 hover:shadow-lg transition-all cursor-pointer"
               >
-                <Link href={href} className="block">
+                <a href={href} className="block">
                   <CardHeader className="p-5 pb-2">
                     <CardTitle className="text-lg text-primary line-clamp-2 group-hover:text-accent transition-colors">
                       {s.title}
@@ -112,7 +112,7 @@ export default function DiscoverView({ basePath }: Props) {
                       閱讀完整故事 →
                     </p>
                   </CardContent>
-                </Link>
+                </a>
               </Card>
             );
           })}
