@@ -53,8 +53,10 @@ export default function AppHeader() {
           </span>
         </Link>
         <div className="absolute right-2 sm:right-4 flex items-center gap-1">
+          {/* Hash-route link. Next.js Link auto-prepends basePath; passing
+              the path WITHOUT /Aura avoids the double-prefix bug. */}
           <Link
-            href={`${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}/#/discover`}
+            href="/#/discover"
             aria-label="瀏覽公開故事 Hall of Fame"
             className="inline-flex items-center justify-center h-9 w-9 sm:w-auto sm:px-3 rounded-md hover:bg-accent/30 text-muted-foreground hover:text-primary transition-colors"
           >

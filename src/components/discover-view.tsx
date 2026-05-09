@@ -89,7 +89,8 @@ export default function DiscoverView({ basePath }: Props) {
               ? new Date(s.createdAt.toDate()).toLocaleDateString('zh-TW', { year: 'numeric', month: 'numeric', day: 'numeric' })
               : '';
             const preview = s.story.slice(0, 100) + (s.story.length > 100 ? '…' : '');
-            const href = `${basePath}/#/s/${s.id}`;
+            // Next.js Link auto-prepends basePath; pass the bare hash path.
+            const href = `/#/s/${s.id}`;
             return (
               <Card
                 key={s.id}
