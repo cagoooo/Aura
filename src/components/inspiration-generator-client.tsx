@@ -811,6 +811,19 @@ export default function InspirationGeneratorClient() {
     toast({ variant: "success", title: "開啟 NotebookLM 中…", description: "故事已複製到剪貼簿，貼到 NotebookLM 即可生成簡報。" });
   };
 
+  const openInCanva = () => {
+    const prompt = buildSlidesPrompt();
+    // Canva 沒有 ?prompt= 公開 URL 參數（截至 2026-05），所以走「開首頁 + 剪貼簿」備援。
+    // 使用者進去後 Canva 的 AI Presentation Maker 第一個欄位就是「主題」輸入框，貼上即可。
+    navigator.clipboard.writeText(prompt).catch(() => {});
+    window.open('https://www.canva.com/create/ai-presentations/', '_blank', 'noopener,noreferrer');
+    toast({
+      variant: "success",
+      title: "開啟 Canva AI 簡報中…",
+      description: "故事已複製到剪貼簿，貼進 Canva 的「描述你的簡報」輸入框即可生成。",
+    });
+  };
+
   useEffect(() => {
     if (synthesizedContent && synthesizedContent.story && synthesizedStoryCardRef.current) {
       requestAnimationFrame(() => {
@@ -944,12 +957,15 @@ export default function InspirationGeneratorClient() {
           <Presentation className="h-5 w-5" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="min-w-[220px]">
+      <DropdownMenuContent align="end" className="min-w-[260px]">
         <DropdownMenuItem onClick={openInGamma}>
           ✨ 在 Gamma 開啟（自動帶 prompt）
         </DropdownMenuItem>
+        <DropdownMenuItem onClick={openInCanva}>
+          🎨 在 Canva AI 簡報開啟（貼上）
+        </DropdownMenuItem>
         <DropdownMenuItem onClick={openInNotebookLM}>
-          📓 在 NotebookLM 開啟（手動貼上）
+          📓 在 NotebookLM 開啟（貼上）
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
