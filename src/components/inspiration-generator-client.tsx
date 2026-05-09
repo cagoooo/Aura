@@ -889,7 +889,7 @@ export default function InspirationGeneratorClient() {
           content.story,
           '',
           '---',
-          '由 [5W1H 靈感發射器](https://cagoooo.github.io/Aura/) 產出',
+          '由 [5W1H 靈感發射器 Pro](https://cagoooo.github.io/Aura/) 產出',
         ].join('\n');
       case 'line':
         return [
@@ -901,7 +901,7 @@ export default function InspirationGeneratorClient() {
           '📝 故事：',
           content.story,
           '',
-          '🚀 用 5W1H 靈感發射器產出',
+          '🚀 用 5W1H 靈感發射器 Pro產出',
           'https://cagoooo.github.io/Aura/',
         ].join('\n');
       case 'w1h-only':
@@ -1361,7 +1361,7 @@ export default function InspirationGeneratorClient() {
                 ))}
               </dl>
               <p className="print-footer-info">
-                由 5W1H 靈感發射器 產出　|　https://cagoooo.github.io/Aura/　|　桃園市石門國小資訊組 阿凱老師 設計
+                由 5W1H 靈感發射器 Pro 產出　|　https://cagoooo.github.io/Aura/　|　桃園市石門國小資訊組 阿凱老師 設計
               </p>
             </div>
           </CardContent>

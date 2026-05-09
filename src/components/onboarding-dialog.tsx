@@ -12,7 +12,7 @@ const STORAGE_KEY = 'aura.onboarding.v1.dismissed';
 const STEPS = [
   {
     icon: Lightbulb,
-    title: '歡迎使用 5W1H 靈感發射器 🚀',
+    title: '歡迎使用 5W1H 靈感發射器 Pro 🚀',
     desc: '一鍵產生 6 個故事元素，搭配 AI 潤飾、檢查一致性、自動合成故事。',
   },
   {

@@ -38,8 +38,18 @@ export default function AppHeader() {
           className="group flex items-center gap-2 text-primary transition-colors duration-300 ease-in-out"
         >
           <Lightbulb className="h-7 w-7 sm:h-8 md:h-9 text-primary group-hover:text-accent group-hover:rotate-[15deg] group-hover:scale-125 transition-all duration-300 ease-in-out" />
-          <span className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight group-hover:text-accent">
-            5W1H 靈感發射器 🚀
+          <span className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight group-hover:text-accent flex items-center gap-1.5 sm:gap-2">
+            5W1H 靈感發射器
+            <span
+              className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] sm:text-xs font-black tracking-wider
+                         bg-gradient-to-br from-amber-400 via-yellow-500 to-amber-600 text-white
+                         shadow-[0_2px_8px_-2px_rgba(245,158,11,0.5)]
+                         border border-amber-300/40"
+              aria-label="Pro 版"
+            >
+              PRO
+            </span>
+            🚀
           </span>
         </Link>
         <div className="absolute right-2 sm:right-4 flex items-center gap-1">

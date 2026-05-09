@@ -30,14 +30,14 @@ const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || '';
 // fresh og:image URL, forcing FB / LINE / Twitter to re-crawl.
 const BUILD_ID = process.env.NEXT_PUBLIC_BUILD_ID ?? 'dev';
 const OG_IMAGE_URL = `${SITE_URL}/og-preview.png?v=${BUILD_ID}`;
-const SITE_TITLE = '5W1H 靈感發射器 🚀';
-const SITE_DESCRIPTION = '隨時隨地，點燃你的創意火花！使用 5W1H 靈感發射器，輕鬆產生故事、劇本、文案的絕妙點子。';
+const SITE_TITLE = '5W1H 靈感發射器 Pro 🚀';
+const SITE_DESCRIPTION = '隨時隨地，點燃你的創意火花！使用 5W1H 靈感發射器 Pro，輕鬆產生故事、劇本、文案的絕妙點子。';
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: SITE_TITLE,
   description: SITE_DESCRIPTION,
-  applicationName: '5W1H 靈感發射器',
+  applicationName: '5W1H 靈感發射器 Pro',
   authors: [{ name: '桃園市石門國小資訊組 阿凱老師' }],
   keywords: ['5W1H', '靈感', '創意', '故事', 'AI', '繁體中文', '台灣', '教學'],
   manifest: `${BASE_PATH}/site.webmanifest`,
@@ -63,7 +63,7 @@ export const metadata: Metadata = {
       secureUrl: OG_IMAGE_URL,
       width: 1200,
       height: 630,
-      alt: '5W1H 靈感發射器 — 點燃你的創意火花',
+      alt: '5W1H 靈感發射器 Pro — 點燃你的創意火花',
       type: 'image/png',
     }],
   },

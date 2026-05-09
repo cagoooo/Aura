@@ -125,7 +125,7 @@ export default function SharedStoryView({ storyId, basePath }: Props) {
               ))}
             </dl>
             <p className="print-footer-info">
-              由 5W1H 靈感發射器 產出　|　https://cagoooo.github.io/Aura/　|　桃園市石門國小資訊組 阿凱老師 設計
+              由 5W1H 靈感發射器 Pro 產出　|　https://cagoooo.github.io/Aura/　|　桃園市石門國小資訊組 阿凱老師 設計
               {createdAt && <><br/>分享於 {createdAt}</>}
             </p>
           </div>

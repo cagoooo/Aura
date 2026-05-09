@@ -114,6 +114,30 @@ ctx.font = '900 88px "NotoSansTC"';
 ctx.textBaseline = 'alphabetic';
 ctx.fillText('靈感發射器', textX, 290);
 
+// Pro badge — gold gradient pill positioned next to the main title
+const titleWidth = ctx.measureText('靈感發射器').width;
+const proBadgeX = textX + titleWidth + 20;
+const proBadgeY = 235;
+const proBadgeW = 110;
+const proBadgeH = 56;
+const proGrad = ctx.createLinearGradient(proBadgeX, proBadgeY, proBadgeX + proBadgeW, proBadgeY + proBadgeH);
+proGrad.addColorStop(0, '#FBBF24');   // amber-400
+proGrad.addColorStop(0.5, '#F59E0B'); // amber-500
+proGrad.addColorStop(1, '#D97706');   // amber-600
+ctx.fillStyle = proGrad;
+roundRect(ctx, proBadgeX, proBadgeY, proBadgeW, proBadgeH, 10);
+ctx.fill();
+// Subtle highlight on top half for shine
+ctx.fillStyle = 'rgba(255,255,255,0.18)';
+roundRect(ctx, proBadgeX, proBadgeY, proBadgeW, proBadgeH / 2, 10);
+ctx.fill();
+// PRO text
+ctx.fillStyle = '#FFFFFF';
+ctx.font = '900 32px "NotoSansTC"';
+ctx.textBaseline = 'middle';
+ctx.fillText('PRO', proBadgeX + 22, proBadgeY + proBadgeH / 2 + 1);
+ctx.textBaseline = 'alphabetic';
+
 // Subtitle line 1
 ctx.fillStyle = 'rgba(255,255,255,0.95)';
 ctx.font = '700 32px "NotoSansTC"';
