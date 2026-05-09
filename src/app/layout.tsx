@@ -31,7 +31,7 @@ const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || '';
 const BUILD_ID = process.env.NEXT_PUBLIC_BUILD_ID ?? 'dev';
 const OG_IMAGE_URL = `${SITE_URL}/og-preview.png?v=${BUILD_ID}`;
 const SITE_TITLE = '5W1H 靈感發射器 Pro 🚀';
-const SITE_DESCRIPTION = '隨時隨地，點燃你的創意火花！使用 5W1H 靈感發射器 Pro，輕鬆產生故事、劇本、文案的絕妙點子。';
+const SITE_DESCRIPTION = '✨ Pro 升級體驗版上線！全新 AI 看圖編故事、雲端跨裝置同步、永久分享連結 — 隨時隨地點燃你的創意火花，輕鬆產生故事、劇本、文案的絕妙點子。';
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),

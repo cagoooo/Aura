@@ -114,39 +114,67 @@ ctx.font = '900 88px "NotoSansTC"';
 ctx.textBaseline = 'alphabetic';
 ctx.fillText('靈感發射器', textX, 290);
 
-// Pro badge — gold gradient pill positioned next to the main title
+// Pro badge — bigger gold gradient pill with strong glow + shine
 const titleWidth = ctx.measureText('靈感發射器').width;
-const proBadgeX = textX + titleWidth + 20;
-const proBadgeY = 235;
-const proBadgeW = 110;
-const proBadgeH = 56;
+ctx.font = '900 88px "NotoSansTC"';  // restore main-title font for measurement consistency
+const proBadgeX = textX + titleWidth + 22;
+const proBadgeY = 220;
+const proBadgeW = 145;
+const proBadgeH = 78;
+
+// Outer warm glow halo
+const proGlow = ctx.createRadialGradient(
+  proBadgeX + proBadgeW / 2, proBadgeY + proBadgeH / 2, 10,
+  proBadgeX + proBadgeW / 2, proBadgeY + proBadgeH / 2, 130
+);
+proGlow.addColorStop(0, 'rgba(251,191,36,0.45)');
+proGlow.addColorStop(1, 'rgba(251,191,36,0)');
+ctx.fillStyle = proGlow;
+ctx.beginPath();
+ctx.arc(proBadgeX + proBadgeW / 2, proBadgeY + proBadgeH / 2, 130, 0, Math.PI * 2);
+ctx.fill();
+
+// Pill body — amber gradient
 const proGrad = ctx.createLinearGradient(proBadgeX, proBadgeY, proBadgeX + proBadgeW, proBadgeY + proBadgeH);
-proGrad.addColorStop(0, '#FBBF24');   // amber-400
+proGrad.addColorStop(0, '#FCD34D');   // amber-300 (lighter top-left)
 proGrad.addColorStop(0.5, '#F59E0B'); // amber-500
-proGrad.addColorStop(1, '#D97706');   // amber-600
+proGrad.addColorStop(1, '#B45309');   // amber-700 (deeper bottom-right)
 ctx.fillStyle = proGrad;
-roundRect(ctx, proBadgeX, proBadgeY, proBadgeW, proBadgeH, 10);
+roundRect(ctx, proBadgeX, proBadgeY, proBadgeW, proBadgeH, 14);
 ctx.fill();
-// Subtle highlight on top half for shine
-ctx.fillStyle = 'rgba(255,255,255,0.18)';
-roundRect(ctx, proBadgeX, proBadgeY, proBadgeW, proBadgeH / 2, 10);
+
+// Top-half shine highlight
+ctx.fillStyle = 'rgba(255,255,255,0.28)';
+roundRect(ctx, proBadgeX + 2, proBadgeY + 2, proBadgeW - 4, (proBadgeH - 4) / 2, 12);
 ctx.fill();
-// PRO text
+
+// Subtle border
+ctx.strokeStyle = 'rgba(255,255,255,0.45)';
+ctx.lineWidth = 1.5;
+roundRect(ctx, proBadgeX, proBadgeY, proBadgeW, proBadgeH, 14);
+ctx.stroke();
+
+// PRO text — bigger, bolder, slight letter-spacing
 ctx.fillStyle = '#FFFFFF';
-ctx.font = '900 32px "NotoSansTC"';
+ctx.font = '900 42px "NotoSansTC"';
 ctx.textBaseline = 'middle';
-ctx.fillText('PRO', proBadgeX + 22, proBadgeY + proBadgeH / 2 + 1);
+ctx.fillText('PRO', proBadgeX + 24, proBadgeY + proBadgeH / 2 + 2);
 ctx.textBaseline = 'alphabetic';
+
+// Pro tagline — small gold text right under the title
+ctx.fillStyle = '#FCD34D';  // amber-300
+ctx.font = '700 22px "NotoSansTC"';
+ctx.fillText('★ Pro 升級體驗版 · 雲端同步 · AI 看圖編故事', textX, 332);
 
 // Subtitle line 1
 ctx.fillStyle = 'rgba(255,255,255,0.95)';
-ctx.font = '700 32px "NotoSansTC"';
-ctx.fillText('點燃你的創意火花！', textX, 360);
+ctx.font = '700 30px "NotoSansTC"';
+ctx.fillText('點燃你的創意火花！', textX, 380);
 
 // Subtitle line 2
 ctx.fillStyle = 'rgba(255,255,255,0.85)';
-ctx.font = '500 26px "NotoSansTC"';
-ctx.fillText('輕鬆產生故事、劇本、文案的絕妙點子', textX, 405);
+ctx.font = '500 24px "NotoSansTC"';
+ctx.fillText('輕鬆產生故事、劇本、文案的絕妙點子', textX, 418);
 
 // URL pill at the bottom
 ctx.fillStyle = 'rgba(0,0,0,0.35)';
