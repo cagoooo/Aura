@@ -147,6 +147,36 @@ const TurnstileWidget = forwardRef<TurnstileWidgetHandle>((_props, ref) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Re-render widget into the current container. Used when Turnstile's
+  // internal state references a stale container (after route changes etc).
+  const rerenderWidget = useCallback(() => {
+    if (!SITE_KEY || !window.turnstile || !containerRef.current) return false;
+    try {
+      // Best-effort cleanup of any stale widget id we might still hold
+      if (widgetIdRef.current) {
+        try { window.turnstile.remove(widgetIdRef.current); } catch { /* ignore */ }
+      }
+      widgetIdRef.current = window.turnstile.render(containerRef.current, {
+        sitekey: SITE_KEY,
+        size: 'invisible',
+        execution: 'execute',
+        appearance: 'interaction-only',
+        callback: (token) => flushNextPending('resolve', token),
+        'error-callback': (code) =>
+          flushNextPending('reject', new Error(`Turnstile error: ${code ?? 'unknown'}`)),
+        'expired-callback': () => {
+          if (widgetIdRef.current && window.turnstile) {
+            window.turnstile.reset(widgetIdRef.current);
+          }
+        },
+      });
+      return true;
+    } catch (e) {
+      console.warn('Turnstile re-render failed:', e);
+      return false;
+    }
+  }, []);
+
   const getToken = useCallback(async (): Promise<string | undefined> => {
     if (!SITE_KEY) return undefined;
 
@@ -168,16 +198,26 @@ const TurnstileWidget = forwardRef<TurnstileWidgetHandle>((_props, ref) => {
       () =>
         new Promise<string>((resolve, reject) => {
           pendingResolversRef.current.push({ resolve, reject });
-          try {
-            window.turnstile!.reset(widgetIdRef.current!);
-            window.turnstile!.execute(widgetIdRef.current!);
-          } catch (e) {
-            const err = e instanceof Error ? e : new Error('Turnstile execute failed');
-            pendingResolversRef.current = pendingResolversRef.current.filter(
-              (p) => p.reject !== reject
-            );
-            reject(err);
-          }
+          const tryExecute = (allowRetry: boolean) => {
+            try {
+              window.turnstile!.reset(widgetIdRef.current!);
+              window.turnstile!.execute(widgetIdRef.current!);
+            } catch (e: any) {
+              // Stale-container error after route change — re-render once and retry
+              const msg = e?.message ?? '';
+              if (allowRetry && /Nothing to reset|invisible/i.test(msg)) {
+                if (rerenderWidget() && widgetIdRef.current) {
+                  return tryExecute(false);
+                }
+              }
+              const err = e instanceof Error ? e : new Error('Turnstile execute failed');
+              pendingResolversRef.current = pendingResolversRef.current.filter(
+                (p) => p.reject !== reject
+              );
+              reject(err);
+            }
+          };
+          tryExecute(true);
         })
     );
 
@@ -185,7 +225,7 @@ const TurnstileWidget = forwardRef<TurnstileWidgetHandle>((_props, ref) => {
     tokenQueueRef.current = myTurn.catch(() => {});
 
     return await myTurn;
-  }, []);
+  }, [rerenderWidget]);
 
   useImperativeHandle(ref, () => ({ getToken }), [getToken]);
 
