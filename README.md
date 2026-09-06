@@ -1,5 +1,7 @@
 # Firebase Studio
 
+🌐 **線上使用：[5W1H 靈感發射器 PRO版](https://cagoooo.github.io/Aura/)**
+
 This is a NextJS starter in Firebase Studio.
 
 To get started, take a look at src/app/page.tsx.
@@ -15,7 +17,7 @@ To get started, take a look at src/app/page.tsx.
 - Repository：`cagoooo/Aura`
 - 可見性：公開
 - 主要技術：TypeScript、React、Next.js、Firebase、Tailwind CSS
-- 線上入口：未在 GitHub repository metadata 設定
+- 線上入口：<https://cagoooo.github.io/Aura/>
 
 ### 可以怎麼應用
 
