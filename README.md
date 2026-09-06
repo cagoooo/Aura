@@ -2,6 +2,8 @@
 
 🌐 **線上使用：[5W1H 靈感發射器 PRO版](https://cagoooo.github.io/Aura/)**
 
+> 📌 **目前版本：v0.2.0**（依據 `package.json`）
+
 This is a NextJS starter in Firebase Studio.
 
 To get started, take a look at src/app/page.tsx.
