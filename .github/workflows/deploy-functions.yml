@@ -1,11 +1,8 @@
 name: Deploy Cloud Functions
 
+# 只能手動觸發：gh-deployer 服務帳號沒有有效金鑰（2026-09-29 查證），自動部署會 403 失敗。
+# 部署函式請用 CLI：firebase deploy --only functions --project aura-2sg5o --account ipad@mail2.smes.tyc.edu.tw
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'functions/**'
-      - '.github/workflows/deploy-functions.yml'
   workflow_dispatch:
 
 concurrency:
