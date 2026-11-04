@@ -1,12 +1,16 @@
-# Firebase Studio
+# 5W1H 靈感發射器 PRO版（Aura）
 
 🌐 **線上使用：[5W1H 靈感發射器 PRO版](https://cagoooo.github.io/Aura/)**
 
 > 📌 **目前版本：v0.2.0**（依據 `package.json`）
 
-This is a NextJS starter in Firebase Studio.
+用 5W1H（What／Who／When／Where／Why／How）框架發想故事與教學設計的 AI 小幫手。前端是 Next.js 靜態網站（GitHub Pages），AI 功能放在 Firebase Cloud Functions 後端，以 Genkit 呼叫 Gemini 2.5 Flash，金鑰不會出現在前端。
 
-To get started, take a look at src/app/page.tsx.
+**後端函式**（`functions/src/index.ts`）：隨機產生 5W1H 元素（`randomElement`／`randomElementBulk`）、語句潤飾（`grammarImprove`／`grammarImproveBulk`）、一致性檢查（`checkConsistency`）、把六個元素合成故事（`synthesizeStory`）、看圖發想（`analyzeImage`），以及故事分享連結的儲存與讀取（`saveStory`／`getStory`）。
+
+**部署**：
+- 前端：push 到 `main` 由 `.github/workflows/deploy-pages.yml` 自動部署到 GitHub Pages。
+- Cloud Functions：執行環境為 **Node.js 22**（`functions/package.json`，2026-09-29 由 Node 20 升級）。`deploy-functions.yml` 只保留手動觸發，平常改用 Firebase CLI 部署 `--only functions`。
 
 ---
 
