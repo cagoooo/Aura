@@ -1,5 +1,5 @@
 import { z } from 'genkit';
-import { getAi } from '../genkit';
+import { getAi, NO_THINKING } from '../genkit';
 import { W1H_ELEMENTS, type W1HKey } from '../constants';
 import { StoryStyleSchema, GradeLevelSchema, buildStyleAndGradeHints } from '../prompt-modifiers';
 
@@ -82,6 +82,7 @@ export async function runRandomElementGeneration(
       prompt: promptText,
       output: { schema: RandomElementGenerationOutputSchema },
       config: {
+        ...NO_THINKING,
         temperature: 1.0,
         safetySettings: [
           { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_LOW_AND_ABOVE' },

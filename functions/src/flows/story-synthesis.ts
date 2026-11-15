@@ -1,5 +1,5 @@
 import { z } from 'genkit';
-import { getAi } from '../genkit';
+import { getAi, NO_THINKING } from '../genkit';
 import { StoryStyleSchema, GradeLevelSchema, buildStyleAndGradeHints } from '../prompt-modifiers';
 
 export const StorySynthesisInputSchema = z.object({
@@ -68,6 +68,7 @@ export async function runStorySynthesis(
       prompt: promptText,
       output: { schema: StorySynthesisOutputSchema },
       config: {
+        ...NO_THINKING,
         safetySettings: [
           { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_LOW_AND_ABOVE' },
           { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_LOW_AND_ABOVE' },

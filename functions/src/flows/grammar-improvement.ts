@@ -1,5 +1,5 @@
 import { z } from 'genkit';
-import { getAi } from '../genkit';
+import { getAi, NO_THINKING } from '../genkit';
 import { StoryStyleSchema, GradeLevelSchema } from '../prompt-modifiers';
 
 export const GrammarImprovementInputSchema = z.object({
@@ -41,6 +41,7 @@ const getPrompt = () => {
       name: 'grammarImprovementPrompt',
       input: { schema: GrammarImprovementInputSchema },
       output: { schema: GrammarImprovementOutputSchema },
+      config: { ...NO_THINKING },
       prompt: PROMPT,
     });
   }

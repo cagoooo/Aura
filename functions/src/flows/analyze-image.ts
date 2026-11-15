@@ -1,5 +1,5 @@
 import { z } from 'genkit';
-import { getAi } from '../genkit';
+import { getAi, NO_THINKING } from '../genkit';
 import { StoryStyleSchema, GradeLevelSchema, buildStyleAndGradeHints } from '../prompt-modifiers';
 
 export const AnalyzeImageInputSchema = z.object({
@@ -53,6 +53,7 @@ export async function runAnalyzeImage(input: AnalyzeImageInput): Promise<Analyze
     ],
     output: { schema: AnalyzeImageOutputSchema },
     config: {
+      ...NO_THINKING,
       temperature: 0.95,
       safetySettings: [
         { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_LOW_AND_ABOVE' },

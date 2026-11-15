@@ -1,5 +1,5 @@
 import { z } from 'genkit';
-import { getAi } from '../genkit';
+import { getAi, NO_THINKING } from '../genkit';
 import { StoryStyleSchema, GradeLevelSchema } from '../prompt-modifiers';
 
 export const ConsistencyCheckInputSchema = z.object({
@@ -69,6 +69,7 @@ const getPrompt = () => {
       name: 'consistencyCheckPrompt',
       input: { schema: ConsistencyCheckInputSchema },
       output: { schema: ConsistencyCheckOutputSchema },
+      config: { ...NO_THINKING },
       prompt: PROMPT,
     });
   }
