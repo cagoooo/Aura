@@ -12,7 +12,8 @@ import { runAnalyzeImage } from './flows/analyze-image';
 import { verifyTurnstileToken, TurnstileError } from './turnstile';
 import { initializeApp } from 'firebase-admin/app';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
-import { getAuth } from 'firebase-admin/auth';
+import { getAuth, type DecodedIdToken } from 'firebase-admin/auth';
+import { notifyAiUsage, clientIp } from './notify-google-chat';
 
 initializeApp();
 const db = getFirestore();
@@ -29,13 +30,16 @@ setGlobalOptions({
 
 const GEMINI_API_KEY = defineSecret('GEMINI_API_KEY');
 const TURNSTILE_SECRET_KEY = defineSecret('TURNSTILE_SECRET_KEY');
+// 2026-11-15：每次使用 AI 功能都發 Google Chat 通知（網址存在 Secret Manager）
+const GOOGLE_CHAT_WEBHOOK_URL = defineSecret('GOOGLE_CHAT_WEBHOOK_URL');
+const SITE_NAME = '5W1H 靈感發射器 PRO版';
 
 const cors = corsLib({ origin: true });
 
 // 2026-11-15：AI 功能必須用 Google 帳號登入才能使用（避免公開網址被大量呼叫、燒 Gemini 費用）。
 class AuthRequiredError extends Error {}
 const LOGIN_REQUIRED_MESSAGE = '請先用 Google 帳號登入才能使用';
-async function requireGoogleUser(req: Request): Promise<void> {
+async function requireGoogleUser(req: Request): Promise<DecodedIdToken> {
   const header = req.get('Authorization') || '';
   const match = header.match(/^Bearer (.+)$/);
   if (!match) throw new AuthRequiredError(LOGIN_REQUIRED_MESSAGE);
@@ -47,6 +51,14 @@ async function requireGoogleUser(req: Request): Promise<void> {
   }
   if (decoded.firebase?.sign_in_provider === 'anonymous') {
     throw new AuthRequiredError(LOGIN_REQUIRED_MESSAGE);
+  }
+  return decoded;
+}
+
+// 請求格式錯誤等「已知狀態碼」的錯誤，由 withCors 轉成對應的 HTTP 狀態
+class HttpError extends Error {
+  constructor(public status: number, message: string) {
+    super(message);
   }
 }
 
@@ -63,6 +75,8 @@ const withCors = (handler: Handler): Handler =>
             if (!res.headersSent) res.status(401).json({ success: false, error: e.message });
           } else if (e instanceof TurnstileError) {
             if (!res.headersSent) res.status(403).json({ success: false, error: e.message });
+          } else if (e instanceof HttpError) {
+            if (!res.headersSent) res.status(e.status).json({ success: false, error: e.message });
           } else if (!res.headersSent) {
             res.status(500).json({ success: false, error: e?.message ?? 'Internal error' });
           }
@@ -72,30 +86,56 @@ const withCors = (handler: Handler): Handler =>
     });
 
 const SECRETS = [GEMINI_API_KEY, TURNSTILE_SECRET_KEY];
+const AI_SECRETS = [...SECRETS, GOOGLE_CHAT_WEBHOOK_URL];
+
+// AI 端點共用外殼：檢查登入 → 執行 → 回應前發 Google Chat 通知（成功／失敗／未登入被擋）。
+// 通知最多等 2.5 秒且不會丟例外，所以不影響主功能回應。
+type AiHandler = (req: Request) => Promise<unknown>;
+const aiEndpoint = (feature: string, handler: AiHandler): Handler =>
+  async (req, res) => {
+    if (req.method === 'OPTIONS') { res.status(204).send(''); return; }
+    if (req.method !== 'POST') {
+      res.status(405).json({ success: false, error: 'POST only' });
+      return;
+    }
+    let user: DecodedIdToken;
+    try {
+      user = await requireGoogleUser(req);
+    } catch (e) {
+      if (e instanceof AuthRequiredError) {
+        await notifyAiUsage(SITE_NAME, { kind: 'blocked', feature, ip: clientIp(req), reason: e.message });
+      }
+      throw e;
+    }
+    const startedAt = Date.now();
+    const chatUser = { name: user.name as string | undefined, email: user.email };
+    try {
+      const data = await handler(req);
+      await notifyAiUsage(SITE_NAME, { kind: 'success', feature, user: chatUser, durationMs: Date.now() - startedAt });
+      res.json({ success: true, data });
+    } catch (e) {
+      await notifyAiUsage(SITE_NAME, { kind: 'failed', feature, user: chatUser, durationMs: Date.now() - startedAt, error: e });
+      throw e;
+    }
+  };
 
 const wrapFlow = <I extends { turnstileToken?: string }, O>(
+  feature: string,
   fn: (input: I) => Promise<O>
 ) =>
   onRequest(
-    { secrets: SECRETS },
-    withCors(async (req, res) => {
-      if (req.method === 'OPTIONS') { res.status(204).send(''); return; }
-      if (req.method !== 'POST') {
-        res.status(405).json({ success: false, error: 'POST only' });
-        return;
-      }
-      await requireGoogleUser(req);
+    { secrets: AI_SECRETS },
+    withCors(aiEndpoint(feature, async (req) => {
       const input = (req.body ?? {}) as I;
       await verifyTurnstileToken(input.turnstileToken);
-      const data = await fn(input);
-      res.json({ success: true, data });
-    })
+      return fn(input);
+    }))
   );
 
-export const randomElement = wrapFlow(runRandomElementGeneration);
-export const grammarImprove = wrapFlow(runGrammarImprovement);
-export const checkConsistency = wrapFlow(runConsistencyCheck);
-export const synthesizeStory = wrapFlow(runStorySynthesis);
+export const randomElement = wrapFlow('隨機產生', runRandomElementGeneration);
+export const grammarImprove = wrapFlow('潤飾語法', runGrammarImprovement);
+export const checkConsistency = wrapFlow('檢查一致性', runConsistencyCheck);
+export const synthesizeStory = wrapFlow('合成故事', runStorySynthesis);
 
 // Permanent share links — Firestore-backed.
 // saveStory: returns { id }; client builds /Aura/#/s/<id> URL.
@@ -199,31 +239,22 @@ export const getStory = onRequest(
 // Multimodal: analyze an image and produce 5W1H story concept.
 // Larger memory + timeout because Gemini vision is slower than text-only.
 export const analyzeImage = onRequest(
-  { secrets: SECRETS, memory: '1GiB', timeoutSeconds: 60 },
-  withCors(async (req, res) => {
-    if (req.method === 'OPTIONS') { res.status(204).send(''); return; }
-    if (req.method !== 'POST') {
-      res.status(405).json({ success: false, error: 'POST only' });
-      return;
-    }
-    await requireGoogleUser(req);
+  { secrets: AI_SECRETS, memory: '1GiB', timeoutSeconds: 60 },
+  withCors(aiEndpoint('看圖編故事', async (req) => {
     const input = (req.body ?? {}) as { imageDataUrl?: string; turnstileToken?: string } & SettingsExtras;
     await verifyTurnstileToken(input.turnstileToken);
     if (!input.imageDataUrl || !input.imageDataUrl.startsWith('data:image/')) {
-      res.status(400).json({ success: false, error: 'imageDataUrl missing or not a data:image/* URL' });
-      return;
+      throw new HttpError(400, 'imageDataUrl missing or not a data:image/* URL');
     }
     if (input.imageDataUrl.length > 1_500_000) {
-      res.status(413).json({ success: false, error: '圖片太大，請壓縮到 1MB 以下再上傳。' });
-      return;
+      throw new HttpError(413, '圖片太大，請壓縮到 1MB 以下再上傳。');
     }
-    const data = await runAnalyzeImage({
+    return runAnalyzeImage({
       imageDataUrl: input.imageDataUrl,
       style: input.style as any,
       gradeLevel: input.gradeLevel as any,
     });
-    res.json({ success: true, data });
-  })
+  }))
 );
 
 // Bulk endpoint: one Turnstile token + parallel Gemini calls.
@@ -244,21 +275,14 @@ type GrammarBulkItem = Omit<GrammarImprovementInput, 'turnstileToken' | 'style' 
 type GrammarBulkInput = { items?: GrammarBulkItem[]; turnstileToken?: string } & SettingsExtras;
 
 export const grammarImproveBulk = onRequest(
-  { secrets: SECRETS },
-  withCors(async (req, res) => {
-    if (req.method === 'OPTIONS') { res.status(204).send(''); return; }
-    if (req.method !== 'POST') {
-      res.status(405).json({ success: false, error: 'POST only' });
-      return;
-    }
-    await requireGoogleUser(req);
+  { secrets: AI_SECRETS },
+  withCors(aiEndpoint('潤飾語法（全部）', async (req) => {
     const input = (req.body ?? {}) as GrammarBulkInput;
     await verifyTurnstileToken(input.turnstileToken);
 
     const items = Array.isArray(input.items) ? input.items : [];
     if (items.length === 0 || items.length > MAX_BULK_ITEMS) {
-      res.status(400).json({ success: false, error: `items must be 1..${MAX_BULK_ITEMS}` });
-      return;
+      throw new HttpError(400, `items must be 1..${MAX_BULK_ITEMS}`);
     }
 
     const results = await Promise.all(
@@ -273,26 +297,19 @@ export const grammarImproveBulk = onRequest(
         })
       )
     );
-    res.json({ success: true, data: { results } });
-  })
+    return { results };
+  }))
 );
 
 export const randomElementBulk = onRequest(
-  { secrets: SECRETS },
-  withCors(async (req, res) => {
-    if (req.method === 'OPTIONS') { res.status(204).send(''); return; }
-    if (req.method !== 'POST') {
-      res.status(405).json({ success: false, error: 'POST only' });
-      return;
-    }
-    await requireGoogleUser(req);
+  { secrets: AI_SECRETS },
+  withCors(aiEndpoint('全部隨機', async (req) => {
     const input = (req.body ?? {}) as BulkInput;
     await verifyTurnstileToken(input.turnstileToken);
 
     const items = Array.isArray(input.items) ? input.items : [];
     if (items.length === 0 || items.length > MAX_BULK_ITEMS) {
-      res.status(400).json({ success: false, error: `items must be 1..${MAX_BULK_ITEMS}` });
-      return;
+      throw new HttpError(400, `items must be 1..${MAX_BULK_ITEMS}`);
     }
 
     const results = await Promise.all(
@@ -307,6 +324,6 @@ export const randomElementBulk = onRequest(
         })
       )
     );
-    res.json({ success: true, data: { results } });
-  })
+    return { results };
+  }))
 );
