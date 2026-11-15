@@ -8,6 +8,7 @@ import W1HElementCard from '@/components/w1h-element-card';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
+import { ToastAction } from '@/components/ui/toast';
 import {
   consistencyCheck, type ConsistencyCheckInput, type ConsistencyCheckOutput,
   storySynthesis, type StorySynthesisInput,
@@ -164,8 +165,24 @@ export default function InspirationGeneratorClient() {
   // Track whether the user just loaded a draft, to avoid the auto-saved
   // draft loop firing during the initial restoration commit.
   const draftHydratedRef = useRef(false);
+  const initialPopulatedRef = useRef(false);
 
-  const { user, configured: authConfigured } = useAuth();
+  const { user, configured: authConfigured, loading: authLoading, signIn } = useAuth();
+
+  // AI 功能必須用 Google 帳號登入（伺服器也會檢查）。沒登入就提示並提供登入按鈕。
+  const requireLogin = (): boolean => {
+    if (user && !user.isAnonymous) return true;
+    toast({
+      title: "請先登入",
+      description: "AI 功能需要用 Google 帳號登入後才能使用。",
+      action: (
+        <ToastAction altText="使用 Google 帳號登入" onClick={() => { void signIn(); }}>
+          使用 Google 登入
+        </ToastAction>
+      ),
+    });
+    return false;
+  };
 
   const [randomAllProgress, setRandomAllProgress] = useState(0);
   const [grammarProgress, setGrammarProgress] = useState(0);
@@ -276,6 +293,7 @@ export default function InspirationGeneratorClient() {
 
   const handleRandomGenerate = useCallback(async (key: W1HKey) => {
     if (w1hData[key].isLocked) return;
+    if (!requireLogin()) return;
 
     setIsLoading(prev => ({ ...prev, elements: { ...prev.elements, [key]: true } }));
     try {
@@ -316,9 +334,10 @@ export default function InspirationGeneratorClient() {
     } finally {
       setIsLoading(prev => ({ ...prev, elements: { ...prev.elements, [key]: false } }));
     }
-  }, [w1hData, toast, recentSessionSuggestions, getTurnstileToken]);
+  }, [w1hData, toast, recentSessionSuggestions, getTurnstileToken, user, signIn]);
 
   const handleRandomAll = async () => {
+    if (!requireLogin()) return;
     setIsLoading(prev => ({ ...prev, randomAll: true }));
     setRandomAllProgress(0);
     setSynthesizedContent(null);
@@ -412,6 +431,7 @@ export default function InspirationGeneratorClient() {
   };
 
   const handleGrammarRefinement = async () => {
+    if (!requireLogin()) return;
     setIsLoading(prev => ({ ...prev, grammar: true }));
     setGrammarButtonFeedbackIcon('wand'); 
     setGrammarProgress(0);
@@ -504,6 +524,7 @@ export default function InspirationGeneratorClient() {
   };
 
   const handleConsistencyCheck = async () => {
+    if (!requireLogin()) return;
     setIsLoading(prev => ({ ...prev, consistency: true }));
     setConsistencyResult(null);
     setSynthesizedContent(null);
@@ -559,6 +580,7 @@ export default function InspirationGeneratorClient() {
   };
 
   const handleStorySynthesis = async () => {
+    if (!requireLogin()) return;
     setIsLoading(prev => ({ ...prev, synthesis: true }));
     setSynthesizedContent(null);
     setConsistencyResult(null);
@@ -714,6 +736,7 @@ export default function InspirationGeneratorClient() {
 
   // #10 — Image → 5W1H
   const handleAnalyzeImage = async (imageDataUrl: string) => {
+    if (!requireLogin()) return;
     setIsLoading(prev => ({ ...prev, analyze: true }));
     try {
       const turnstileToken = await getTurnstileToken();
@@ -1088,9 +1111,12 @@ export default function InspirationGeneratorClient() {
       // setTimeouts above handle per-card loading=false themselves.
     };
 
+    // 只有登入後才自動向 AI 要新點子；未登入就保留預設範例，不呼叫伺服器。
+    if (authLoading || !user || user.isAnonymous || initialPopulatedRef.current) return;
+    initialPopulatedRef.current = true;
     populateInitialElements();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [authLoading, user]);
 
 
   const isAnyMainButtonActive = isLoading.randomAll || isLoading.grammar || isLoading.consistency || isLoading.synthesis;
@@ -1141,7 +1167,7 @@ export default function InspirationGeneratorClient() {
 
       <div className="flex flex-col sm:flex-row gap-4 mb-6 justify-center flex-wrap no-print">
         <Button
-          onClick={() => setImageDialogOpen(true)}
+          onClick={() => { if (requireLogin()) setImageDialogOpen(true); }}
           disabled={isAnyMainButtonActive || isAnyElementIndividuallyLoading || isLoading.analyze}
           className="bg-gradient-to-r from-fuchsia-500 to-pink-500 hover:brightness-110 text-white flex-1 sm:flex-none rounded-lg shadow-md text-base h-12"
         >

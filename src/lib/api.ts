@@ -7,6 +7,17 @@
  */
 
 import type { W1HKey } from '@/lib/constants';
+import { getFbAuth, isFirebaseClientConfigured } from '@/lib/firebase-client';
+
+export const LOGIN_REQUIRED_MESSAGE = '請先用 Google 帳號登入才能使用 AI 功能';
+
+/** 取得目前 Google 登入者的憑證；沒登入（或匿名）回 null。 */
+async function getIdTokenOrNull(): Promise<string | null> {
+  if (!isFirebaseClientConfigured()) return null;
+  const current = getFbAuth().currentUser;
+  if (!current || current.isAnonymous) return null;
+  return current.getIdToken();
+}
 
 // Style + grade are user prefs that get attached to ~every flow call.
 export type StoryStyle = 'free' | 'fairytale' | 'wuxia' | 'scifi' | 'mystery' | 'school' | 'folklore';
@@ -71,9 +82,13 @@ export interface StorySynthesisOutput {
 
 // ─── Fetch wrapper ──────────────────────────────────────────────────────────
 async function callFunction<T>(name: string, body: unknown): Promise<T> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  // getStory / saveStory 不需要登入；其餘 AI 功能需要，伺服器會檢查。
+  const idToken = await getIdTokenOrNull();
+  if (idToken) headers.Authorization = `Bearer ${idToken}`;
   const res = await fetch(`${API_BASE}/${name}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify(body),
   });
   let json: any = null;

@@ -12,6 +12,7 @@ import { runAnalyzeImage } from './flows/analyze-image';
 import { verifyTurnstileToken, TurnstileError } from './turnstile';
 import { initializeApp } from 'firebase-admin/app';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
+import { getAuth } from 'firebase-admin/auth';
 
 initializeApp();
 const db = getFirestore();
@@ -31,6 +32,24 @@ const TURNSTILE_SECRET_KEY = defineSecret('TURNSTILE_SECRET_KEY');
 
 const cors = corsLib({ origin: true });
 
+// 2026-11-15：AI 功能必須用 Google 帳號登入才能使用（避免公開網址被大量呼叫、燒 Gemini 費用）。
+class AuthRequiredError extends Error {}
+const LOGIN_REQUIRED_MESSAGE = '請先用 Google 帳號登入才能使用';
+async function requireGoogleUser(req: Request): Promise<void> {
+  const header = req.get('Authorization') || '';
+  const match = header.match(/^Bearer (.+)$/);
+  if (!match) throw new AuthRequiredError(LOGIN_REQUIRED_MESSAGE);
+  let decoded;
+  try {
+    decoded = await getAuth().verifyIdToken(match[1]);
+  } catch {
+    throw new AuthRequiredError('登入已過期，請重新登入');
+  }
+  if (decoded.firebase?.sign_in_provider === 'anonymous') {
+    throw new AuthRequiredError(LOGIN_REQUIRED_MESSAGE);
+  }
+}
+
 type Handler = (req: Request, res: Response) => Promise<void>;
 const withCors = (handler: Handler): Handler =>
   (req, res) =>
@@ -40,7 +59,9 @@ const withCors = (handler: Handler): Handler =>
           await handler(req, res);
         } catch (e: any) {
           console.error('Handler error:', e);
-          if (e instanceof TurnstileError) {
+          if (e instanceof AuthRequiredError) {
+            if (!res.headersSent) res.status(401).json({ success: false, error: e.message });
+          } else if (e instanceof TurnstileError) {
             if (!res.headersSent) res.status(403).json({ success: false, error: e.message });
           } else if (!res.headersSent) {
             res.status(500).json({ success: false, error: e?.message ?? 'Internal error' });
@@ -63,6 +84,7 @@ const wrapFlow = <I extends { turnstileToken?: string }, O>(
         res.status(405).json({ success: false, error: 'POST only' });
         return;
       }
+      await requireGoogleUser(req);
       const input = (req.body ?? {}) as I;
       await verifyTurnstileToken(input.turnstileToken);
       const data = await fn(input);
@@ -184,6 +206,7 @@ export const analyzeImage = onRequest(
       res.status(405).json({ success: false, error: 'POST only' });
       return;
     }
+    await requireGoogleUser(req);
     const input = (req.body ?? {}) as { imageDataUrl?: string; turnstileToken?: string } & SettingsExtras;
     await verifyTurnstileToken(input.turnstileToken);
     if (!input.imageDataUrl || !input.imageDataUrl.startsWith('data:image/')) {
@@ -228,6 +251,7 @@ export const grammarImproveBulk = onRequest(
       res.status(405).json({ success: false, error: 'POST only' });
       return;
     }
+    await requireGoogleUser(req);
     const input = (req.body ?? {}) as GrammarBulkInput;
     await verifyTurnstileToken(input.turnstileToken);
 
@@ -261,6 +285,7 @@ export const randomElementBulk = onRequest(
       res.status(405).json({ success: false, error: 'POST only' });
       return;
     }
+    await requireGoogleUser(req);
     const input = (req.body ?? {}) as BulkInput;
     await verifyTurnstileToken(input.turnstileToken);
 
