@@ -11,8 +11,9 @@ export function getAi() {
     _ai = genkit({
       plugins: [googleAI({ apiKey: process.env.GEMINI_API_KEY })],
       // gemini-2.0-flash was deprecated 2026-04 ("not available to new users").
-      // 2026-11 改用 2.5-flash-lite：單價約 2.5-flash 的 1/3～1/6。
-      model: 'googleai/gemini-2.5-flash-lite',
+      // 2026-11-15：本專案金鑰呼叫 2.5-flash-lite 會回 404「no longer available to new users」，
+      // 改用實測可用、仍比 2.5-flash 便宜的 3.1-flash-lite（可用 thinkingBudget: 0 關閉思考）。
+      model: 'googleai/gemini-3.1-flash-lite',
     });
   }
   return _ai;
