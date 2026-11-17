@@ -9,19 +9,22 @@
  * - best-effort：最多等 2.5 秒，失敗只 console.warn，絕不丟例外、不影響主功能
  * - 卡片只放「誰、用了什麼功能、什麼時候、花多久」，不放使用者輸入或 AI 產出內容（隱私）
  * - 未登入被擋（401）的通知用「同一 IP 每 5 分鐘最多 1 則」節流，避免被狂打時洗版
+ * - 今日次數用完被擋（429）的通知用「同一使用者每 5 分鐘最多 1 則」節流（2026-11-17）
  */
 
 const CHAT_WEBHOOK_PREFIX = 'https://chat.googleapis.com/';
 const SEND_TIMEOUT_MS = 2500;
 const BLOCKED_THROTTLE_MS = 5 * 60 * 1000;
 const lastBlockedByIp = new Map<string, number>();
+const lastQuotaByUser = new Map<string, number>();
 
 export type ChatUser = { name?: string | null; email?: string | null };
 
 export type AiUsageEvent =
-  | { kind: 'success'; feature: string; user?: ChatUser; durationMs: number }
-  | { kind: 'failed'; feature: string; user?: ChatUser; durationMs: number; error: unknown }
-  | { kind: 'blocked'; feature: string; ip?: string; reason?: string };
+  | { kind: 'success'; feature: string; user?: ChatUser; durationMs: number; remaining?: number }
+  | { kind: 'failed'; feature: string; user?: ChatUser; durationMs: number; error: unknown; remaining?: number }
+  | { kind: 'blocked'; feature: string; ip?: string; reason?: string }
+  | { kind: 'quotaExceeded'; feature: string; user?: ChatUser; limit: number; throttleKey: string };
 
 function taipeiTime(): string {
   return new Intl.DateTimeFormat('zh-TW', {
@@ -49,16 +52,16 @@ function seconds(ms: number): string {
   return `${(Math.max(0, ms) / 1000).toFixed(1)} 秒`;
 }
 
-function shouldSendBlocked(ip: string): boolean {
+function shouldSendThrottled(store: Map<string, number>, key: string): boolean {
   const now = Date.now();
-  const last = lastBlockedByIp.get(ip);
+  const last = store.get(key);
   if (last !== undefined && now - last < BLOCKED_THROTTLE_MS) return false;
-  if (lastBlockedByIp.size > 500) {
-    for (const [key, time] of lastBlockedByIp.entries()) {
-      if (now - time >= BLOCKED_THROTTLE_MS) lastBlockedByIp.delete(key);
+  if (store.size > 500) {
+    for (const [k, time] of store.entries()) {
+      if (now - time >= BLOCKED_THROTTLE_MS) store.delete(k);
     }
   }
-  lastBlockedByIp.set(ip, now);
+  store.set(key, now);
   return true;
 }
 
@@ -74,7 +77,8 @@ export async function notifyAiUsage(siteName: string, event: AiUsageEvent): Prom
     const webhookUrl = (process.env.GOOGLE_CHAT_WEBHOOK_URL || '').trim();
     if (!webhookUrl || !webhookUrl.startsWith(CHAT_WEBHOOK_PREFIX)) return;
 
-    if (event.kind === 'blocked' && !shouldSendBlocked(event.ip || '未知')) return;
+    if (event.kind === 'blocked' && !shouldSendThrottled(lastBlockedByIp, event.ip || '未知')) return;
+    if (event.kind === 'quotaExceeded' && !shouldSendThrottled(lastQuotaByUser, event.throttleKey)) return;
 
     let title: string;
     const fields: Array<[string, string]> = [['網站', siteName], ['功能', event.feature]];
@@ -82,6 +86,8 @@ export async function notifyAiUsage(siteName: string, event: AiUsageEvent): Prom
       title = `✅ 有人使用了 ${siteName}`;
     } else if (event.kind === 'failed') {
       title = `❌ ${siteName} 失敗`;
+    } else if (event.kind === 'quotaExceeded') {
+      title = '⛔ 今日次數已用完被擋';
     } else {
       title = '⚠️ 未登入呼叫被擋';
     }
@@ -95,8 +101,15 @@ export async function notifyAiUsage(siteName: string, event: AiUsageEvent): Prom
       fields.push(['Email', event.user?.email || '（未提供 Email）']);
     }
     fields.push(['時間', taipeiTime()]);
-    if (event.kind !== 'blocked') fields.push(['耗時', seconds(event.durationMs)]);
+    if (event.kind === 'success' || event.kind === 'failed') {
+      fields.push(['耗時', seconds(event.durationMs)]);
+      if (typeof event.remaining === 'number') fields.push(['今日剩餘', `${event.remaining} 次`]);
+    }
     if (event.kind === 'failed') fields.push(['錯誤摘要', errorSummary(event.error)]);
+    if (event.kind === 'quotaExceeded') {
+      fields.push(['每日上限', `${event.limit} 次（台北時間午夜重置）`]);
+      fields.push(['備註', '同一使用者每 5 分鐘只通知 1 次']);
+    }
 
     const text = [title, ...fields.map(([k, v]) => `${k}：${v}`)].join('\n').slice(0, 4000);
     const body = {

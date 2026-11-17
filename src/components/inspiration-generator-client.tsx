@@ -17,7 +17,9 @@ import {
   grammarImproveBulk,
   analyzeImage,
   saveStory,
+  isQuotaExceededError,
 } from '@/lib/api';
+import AiQuotaBadge from '@/components/ai-quota-badge';
 import ImageUploadDialog from '@/components/image-upload-dialog';
 import ShareLinkDialog from '@/components/share-link-dialog';
 import LibraryDrawer from '@/components/library-drawer';
@@ -165,9 +167,8 @@ export default function InspirationGeneratorClient() {
   // Track whether the user just loaded a draft, to avoid the auto-saved
   // draft loop firing during the initial restoration commit.
   const draftHydratedRef = useRef(false);
-  const initialPopulatedRef = useRef(false);
 
-  const { user, configured: authConfigured, loading: authLoading, signIn } = useAuth();
+  const { user, configured: authConfigured, signIn } = useAuth();
 
   // AI 功能必須用 Google 帳號登入（伺服器也會檢查）。沒登入就提示並提供登入按鈕。
   const requireLogin = (): boolean => {
@@ -182,6 +183,13 @@ export default function InspirationGeneratorClient() {
       ),
     });
     return false;
+  };
+
+  // 今天 5 次用完（伺服器回 429）時顯示固定中文提示；回傳 true 代表已處理。
+  const toastIfQuotaExceeded = (error: unknown): boolean => {
+    if (!isQuotaExceededError(error)) return false;
+    toast({ variant: "destructive", title: "今日次數已用完", description: error.message });
+    return true;
   };
 
   const [randomAllProgress, setRandomAllProgress] = useState(0);
@@ -328,6 +336,7 @@ export default function InspirationGeneratorClient() {
 
     } catch (error) {
       console.error(`Random generation error for ${key}:`, error);
+      if (toastIfQuotaExceeded(error)) return;
       const randomText = getRandomItem(W1H_ELEMENTS[key].options);
       setW1hData((prev) => ({ ...prev, [key]: { ...prev[key], text: randomText } }));
       toast({ variant: "destructive", title: "隨機產生失敗", description: `為「${W1H_ELEMENTS[key].label}」項目隨機產生內容時發生錯誤，已使用備用選項。` });
@@ -411,14 +420,16 @@ export default function InspirationGeneratorClient() {
     } catch (error) {
       console.error('Bulk random failed, falling back to default options:', error);
       disarmColdStartHint();
-      setW1hData(prev => {
-        const next = { ...prev };
-        elementsToProcessKeys.forEach((key) => {
-          next[key] = { ...next[key], text: getRandomItem(W1H_ELEMENTS[key].options) };
+      if (!toastIfQuotaExceeded(error)) {
+        setW1hData(prev => {
+          const next = { ...prev };
+          elementsToProcessKeys.forEach((key) => {
+            next[key] = { ...next[key], text: getRandomItem(W1H_ELEMENTS[key].options) };
+          });
+          return next;
         });
-        return next;
-      });
-      toast({ variant: "destructive", title: "全部隨機失敗", description: "AI 服務暫時不可用，已使用預設備用內容。" });
+        toast({ variant: "destructive", title: "全部隨機失敗", description: "AI 服務暫時不可用，已使用預設備用內容。" });
+      }
       setIsLoading(prev => ({
         ...prev,
         randomAll: false,
@@ -470,7 +481,9 @@ export default function InspirationGeneratorClient() {
       });
     } catch (error) {
       console.error('Bulk grammar refinement failed:', error);
-      toast({ variant: "destructive", title: "潤飾語法失敗", description: "AI 服務暫時不可用，所有項目保留原內容。" });
+      if (!toastIfQuotaExceeded(error)) {
+        toast({ variant: "destructive", title: "潤飾語法失敗", description: "AI 服務暫時不可用，所有項目保留原內容。" });
+      }
     }
     setGrammarProgress(100);
     setW1hData(newW1hData);
@@ -571,9 +584,11 @@ export default function InspirationGeneratorClient() {
       }
     } catch (error) {
       console.error("Consistency check error:", error);
-      toast({ variant: "destructive", title: "一致性檢查失敗", description: "服務發生錯誤，請稍後再試。" });
-      setConsistencyResult({isConsistent: false, suggestions: ['進行一致性檢查時發生錯誤，無法提供建議。']});
-      consistencyAlertKey.current += 1; 
+      if (!toastIfQuotaExceeded(error)) {
+        toast({ variant: "destructive", title: "一致性檢查失敗", description: "服務發生錯誤，請稍後再試。" });
+        setConsistencyResult({isConsistent: false, suggestions: ['進行一致性檢查時發生錯誤，無法提供建議。']});
+        consistencyAlertKey.current += 1;
+      }
     } finally {
       setIsLoading(prev => ({ ...prev, consistency: false }));
     }
@@ -657,9 +672,11 @@ export default function InspirationGeneratorClient() {
       }
     } catch (error) {
       console.error("Story synthesis error:", error);
-      toast({ variant: "destructive", title: "內容合成失敗", description: "服務發生錯誤，請稍後再試。" });
-      setSynthesizedContent({ title: '合成標題失敗', story: '合成故事時遇到問題，請稍後再試。'});
-      storyCardKey.current += 1; 
+      if (!toastIfQuotaExceeded(error)) {
+        toast({ variant: "destructive", title: "內容合成失敗", description: "服務發生錯誤，請稍後再試。" });
+        setSynthesizedContent({ title: '合成標題失敗', story: '合成故事時遇到問題，請稍後再試。'});
+        storyCardKey.current += 1;
+      }
     } finally {
       setIsLoading(prev => ({ ...prev, synthesis: false }));
     }
@@ -1040,83 +1057,8 @@ export default function InspirationGeneratorClient() {
     }
   };
   
-  useEffect(() => {
-    // On mount: 6 cards already show optimistic placeholders from
-    // W1H_ELEMENTS.options. Fire ONE bulk request to swap them with
-    // fresh AI-generated text. Single Turnstile token + parallel
-    // server-side Gemini calls → ~3s end-to-end vs ~6-10s before.
-    const populateInitialElements = async () => {
-      const items = ALL_W1H_KEYS.map((key) => ({
-        elementType: key,
-        elementLabel: W1H_ELEMENTS[key].label,
-        existingOptions: Array.from(new Set([
-          ...W1H_ELEMENTS[key].options,
-          ...(recentSessionSuggestions[key] || []),
-        ])),
-      }));
-
-      // Mark all 6 cards loading so the spinner shows over the optimistic text.
-      setIsLoading(prev => ({
-        ...prev,
-        elements: ALL_W1H_KEYS.reduce(
-          (acc, k) => ({ ...acc, [k]: true }),
-          {} as Record<W1HKey, boolean>
-        ),
-      }));
-
-      armColdStartHint();
-      try {
-        const turnstileToken = await getTurnstileToken();
-        const { results } = await randomElementBulk({ items, turnstileToken, style: settings.style, gradeLevel: settings.gradeLevel });
-        disarmColdStartHint();
-
-        // #16 Stagger: reveal each card one at a time with a 120ms cascade
-        // so the user sees a graceful "AI is drafting" effect instead of
-        // 6 cards snapping at once. Each card's skeleton clears as its
-        // text lands.
-        const STAGGER_MS = 120;
-        ALL_W1H_KEYS.forEach((key, i) => {
-          setTimeout(() => {
-            const generated = results[i]?.generatedText?.trim();
-            if (generated) {
-              setW1hData(prev => ({ ...prev, [key]: { ...prev[key], text: generated } }));
-              setRecentSessionSuggestions(prev => {
-                const updated = [...(prev[key] || [])];
-                if (!updated.includes(generated)) updated.unshift(generated);
-                return { ...prev, [key]: updated.slice(0, 5) };
-              });
-            }
-            setIsLoading(prev => ({ ...prev, elements: { ...prev.elements, [key]: false } }));
-          }, i * STAGGER_MS);
-        });
-
-        // Toast fires after the last card lands so it feels intentional
-        setTimeout(() => {
-          toast({ variant: "success", title: "AI 靈感已填入！", description: "已為您產生 6 個全新 5W1H 點子。" });
-        }, ALL_W1H_KEYS.length * STAGGER_MS);
-      } catch (error) {
-        console.error('Initial bulk generation failed; keeping optimistic placeholders:', error);
-        // On error: clear all loading states immediately (no stagger to wait
-        // for). Cards already have constants-based text from useState init.
-        disarmColdStartHint();
-        setIsLoading(prev => ({
-          ...prev,
-          elements: ALL_W1H_KEYS.reduce(
-            (acc, k) => ({ ...acc, [k]: false }),
-            {} as Record<W1HKey, boolean>
-          ),
-        }));
-      }
-      // Note: success path does NOT clear isLoading here — the stagger
-      // setTimeouts above handle per-card loading=false themselves.
-    };
-
-    // 只有登入後才自動向 AI 要新點子；未登入就保留預設範例，不呼叫伺服器。
-    if (authLoading || !user || user.isAnonymous || initialPopulatedRef.current) return;
-    initialPopulatedRef.current = true;
-    populateInitialElements();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authLoading, user]);
+  // 2026-11-17：開頁不再自動呼叫 AI（每人每天只有 5 次，開頁就扣 1 次太浪費）。
+  // 6 張卡片保留 W1H_ELEMENTS 的預設範例文字，只有使用者按按鈕才呼叫 AI。
 
 
   const isAnyMainButtonActive = isLoading.randomAll || isLoading.grammar || isLoading.consistency || isLoading.synthesis;
@@ -1164,6 +1106,7 @@ export default function InspirationGeneratorClient() {
       <p className="text-center text-lg text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-950/70 p-6 rounded-xl shadow-lg mb-8 max-w-prose mx-auto border border-blue-200 dark:border-blue-800">
         點擊「隨機產生」來獲得靈感，或使用工具「潤飾語法」、「檢查一致性」及「合成內容」來完善您的創意點子！
       </p>
+      <AiQuotaBadge />
 
       <div className="flex flex-col sm:flex-row gap-4 mb-6 justify-center flex-wrap no-print">
         <Button

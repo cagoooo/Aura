@@ -11,6 +11,50 @@ import { getFbAuth, isFirebaseClientConfigured } from '@/lib/firebase-client';
 
 export const LOGIN_REQUIRED_MESSAGE = '請先用 Google 帳號登入才能使用 AI 功能';
 
+// ─── 每人每天 AI 次數（2026-11-17）──────────────────────────────────────
+// 伺服器每位登入者每天最多 5 次（台北時間午夜重置）；每次 AI 回應會帶回 quota，
+// 這裡存成全域狀態讓畫面上的「今日剩餘」即時更新。
+export const DAILY_AI_LIMIT = 5;
+export const QUOTA_EXCEEDED_MESSAGE = `今天的 ${DAILY_AI_LIMIT} 次已用完，明天（台北時間午夜後）再來`;
+
+export interface AiQuota {
+  limit: number;
+  used: number;
+  remaining: number;
+  date: string;
+}
+
+export class QuotaExceededError extends Error {
+  constructor(message: string = QUOTA_EXCEEDED_MESSAGE) {
+    super(message);
+    this.name = 'QuotaExceededError';
+  }
+}
+
+export const isQuotaExceededError = (e: unknown): e is QuotaExceededError =>
+  e instanceof QuotaExceededError;
+
+let currentQuota: AiQuota | null = null;
+const quotaListeners = new Set<(q: AiQuota | null) => void>();
+
+function isAiQuota(v: any): v is AiQuota {
+  return v && typeof v.remaining === 'number' && typeof v.limit === 'number';
+}
+
+export function setAiQuota(q: AiQuota | null) {
+  currentQuota = q;
+  quotaListeners.forEach((fn) => fn(q));
+}
+
+export function getAiQuota(): AiQuota | null {
+  return currentQuota;
+}
+
+export function subscribeAiQuota(fn: (q: AiQuota | null) => void): () => void {
+  quotaListeners.add(fn);
+  return () => { quotaListeners.delete(fn); };
+}
+
 /** 取得目前 Google 登入者的憑證；沒登入（或匿名）回 null。 */
 async function getIdTokenOrNull(): Promise<string | null> {
   if (!isFirebaseClientConfigured()) return null;
@@ -93,11 +137,38 @@ async function callFunction<T>(name: string, body: unknown): Promise<T> {
   });
   let json: any = null;
   try { json = await res.json(); } catch { /* empty / non-JSON */ }
+  if (isAiQuota(json?.quota)) setAiQuota(json.quota);
+  if (res.status === 429) {
+    throw new QuotaExceededError(json?.error ?? QUOTA_EXCEEDED_MESSAGE);
+  }
   if (!res.ok || !json?.success) {
     const msg = json?.error ?? `HTTP ${res.status}`;
     throw new Error(msg);
   }
   return json.data as T;
+}
+
+/** 查詢今日剩餘次數（唯讀：不扣次、不發通知）；沒登入回 null。 */
+export async function refreshAiQuota(): Promise<AiQuota | null> {
+  const idToken = await getIdTokenOrNull();
+  if (!idToken) {
+    setAiQuota(null);
+    return null;
+  }
+  try {
+    const res = await fetch(`${API_BASE}/aiQuota`, {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${idToken}` },
+    });
+    const json = await res.json().catch(() => null);
+    if (res.ok && json?.success && isAiQuota(json.data)) {
+      setAiQuota(json.data);
+      return json.data;
+    }
+  } catch (e) {
+    console.warn('refreshAiQuota failed:', e);
+  }
+  return currentQuota;
 }
 
 // Bulk variant: one Turnstile token + parallel Gemini calls server-side.
