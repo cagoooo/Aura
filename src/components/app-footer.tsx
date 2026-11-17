@@ -8,7 +8,7 @@ export default function AppFooter() {
         <div className="flex items-center justify-center space-x-2 text-sm">
           <span className="text-primary font-bold text-base">© 2026</span>
           <Link
-            href="https://www.smes.tyc.edu.tw/"
+            href="https://cagoooo.github.io/Akai/"
             target="_blank"
             rel="noopener noreferrer"
             className="text-accent hover:text-primary font-semibold text-base hover:underline transition-all duration-300 ease-in-out transform hover:scale-105"
