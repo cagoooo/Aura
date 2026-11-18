@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { LogIn, LogOut, BookMarked, Loader2 } from 'lucide-react';
 import { useAuth } from '@/components/auth-provider';
 import { useToast } from '@/hooks/use-toast';
+import { isInAppBrowser } from '@/lib/in-app-browser';
 
 interface Props {
   onOpenLibrary: () => void;
@@ -32,7 +33,8 @@ export default function AuthMenu({ onOpenLibrary }: Props) {
         onClick={async () => {
           const u = await signIn();
           if (u) toast({ variant: "success", title: "登入成功", description: `歡迎 ${u.displayName ?? u.email ?? '使用者'}！` });
-          else toast({ variant: "destructive", title: "登入失敗", description: "請再試一次或檢查瀏覽器彈窗權限。" });
+          // App 內建瀏覽器：signIn 已跳提醒改用瀏覽器開啟，這不是登入失敗，不再疊一個紅色通知
+          else if (!isInAppBrowser()) toast({ variant: "destructive", title: "登入失敗", description: "請再試一次或檢查瀏覽器彈窗權限。" });
         }}
         aria-label="使用 Google 登入"
         className="text-muted-foreground hover:text-primary"

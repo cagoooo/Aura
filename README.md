@@ -2,7 +2,7 @@
 
 🌐 **線上使用：[5W1H 靈感發射器 PRO版](https://cagoooo.github.io/Aura/)**
 
-> 📌 **目前版本：v0.2.1**（依據 `package.json`）
+> 📌 **目前版本：v0.2.2**（依據 `package.json`）
 
 用 5W1H（What／Who／When／Where／Why／How）框架發想故事與教學設計的 AI 小幫手。前端是 Next.js 靜態網站（GitHub Pages），AI 功能放在 Firebase Cloud Functions 後端，以 Genkit 呼叫 Gemini 2.5 Flash，金鑰不會出現在前端。
 
