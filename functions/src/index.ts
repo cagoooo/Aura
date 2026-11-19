@@ -92,7 +92,7 @@ const AI_SECRETS = [...SECRETS, GOOGLE_CHAT_WEBHOOK_URL];
 // 每位 Google 登入使用者（uid）每天最多 DAILY_AI_LIMIT 次，台北時間午夜重置。
 // 計數放 Firestore `rateLimits/user_<uid>_<台北日期>`，用 transaction 扣次避免同時送出時超扣；
 // 文件帶 expireAt（隔天午夜再加 1 天），搭配 Firestore TTL 自動清掉舊紀錄。
-const DAILY_AI_LIMIT = 5;
+const DAILY_AI_LIMIT = 3; // 2026-11-19 由 5 次下修為 3 次
 const RATE_LIMIT_COLLECTION = 'rateLimits';
 const QUOTA_EXCEEDED_MESSAGE = `今天的 ${DAILY_AI_LIMIT} 次已用完，明天（台北時間午夜後）再來`;
 const TAIPEI_OFFSET_MS = 8 * 3600 * 1000; // 台灣沒有日光節約時間，固定 UTC+8

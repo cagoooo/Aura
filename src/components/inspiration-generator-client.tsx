@@ -185,7 +185,7 @@ export default function InspirationGeneratorClient() {
     return false;
   };
 
-  // 今天 5 次用完（伺服器回 429）時顯示固定中文提示；回傳 true 代表已處理。
+  // 今天 3 次用完（伺服器回 429）時顯示固定中文提示；回傳 true 代表已處理。
   const toastIfQuotaExceeded = (error: unknown): boolean => {
     if (!isQuotaExceededError(error)) return false;
     toast({ variant: "destructive", title: "今日次數已用完", description: error.message });
@@ -1057,7 +1057,7 @@ export default function InspirationGeneratorClient() {
     }
   };
   
-  // 2026-11-17：開頁不再自動呼叫 AI（每人每天只有 5 次，開頁就扣 1 次太浪費）。
+  // 2026-11-17：開頁不再自動呼叫 AI（每人每天只有 3 次，開頁就扣 1 次太浪費）。
   // 6 張卡片保留 W1H_ELEMENTS 的預設範例文字，只有使用者按按鈕才呼叫 AI。
 
 

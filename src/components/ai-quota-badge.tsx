@@ -26,7 +26,7 @@ export function useAiQuota(): AiQuota | null {
   return quota;
 }
 
-/** 頁首說明下方的次數提示：每人每天 5 次＋今日剩餘次數。 */
+/** 頁首說明下方的次數提示：每人每天 3 次＋今日剩餘次數。 */
 export default function AiQuotaBadge() {
   const { user, loading, configured, signIn } = useAuth();
   const quota = useAiQuota();
@@ -48,8 +48,8 @@ export default function AiQuotaBadge() {
     >
       <span className="inline-flex items-center gap-1.5 font-semibold">
         <Gauge className="h-4 w-4 shrink-0" aria-hidden="true" />
-        {/* 數字直接寫死成一段文字（與 DAILY_AI_LIMIT=5 一致），方便搜尋與避免 SSR 拆字 */}
-        AI 功能需 Google 登入・每人每天 5 次
+        {/* 數字直接寫死成一段文字（與 DAILY_AI_LIMIT=3 一致），方便搜尋與避免 SSR 拆字 */}
+        AI 功能需 Google 登入・每人每天 3 次
       </span>
       {loading ? null : signedIn ? (
         <span>

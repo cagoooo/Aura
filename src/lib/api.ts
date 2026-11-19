@@ -12,9 +12,9 @@ import { getFbAuth, isFirebaseClientConfigured } from '@/lib/firebase-client';
 export const LOGIN_REQUIRED_MESSAGE = '請先用 Google 帳號登入才能使用 AI 功能';
 
 // ─── 每人每天 AI 次數（2026-11-17）──────────────────────────────────────
-// 伺服器每位登入者每天最多 5 次（台北時間午夜重置）；每次 AI 回應會帶回 quota，
+// 伺服器每位登入者每天最多 3 次（台北時間午夜重置）；每次 AI 回應會帶回 quota，
 // 這裡存成全域狀態讓畫面上的「今日剩餘」即時更新。
-export const DAILY_AI_LIMIT = 5;
+export const DAILY_AI_LIMIT = 3;
 export const QUOTA_EXCEEDED_MESSAGE = `今天的 ${DAILY_AI_LIMIT} 次已用完，明天（台北時間午夜後）再來`;
 
 export interface AiQuota {
